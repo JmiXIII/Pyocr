@@ -150,9 +150,6 @@ class View(QtWidgets.QWidget):
         self.image = Image(fileName)
         self.setLayout(QtWidgets.QHBoxLayout())
         self.layout().addWidget(self.image)
-        self.image.adjustSize()
-        #self.image.updateGeometry()
-        #self.image.update()
 
 
 class Viewer(QtWidgets.QMainWindow):
@@ -165,13 +162,12 @@ class Viewer(QtWidgets.QMainWindow):
         self.scroller.setWidgetResizable(True)
         self.scroller.adjustSize()
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-        self.splitter.addWidget(self.scroller)
 
-        hbox = QtWidgets.QVBoxLayout()
-        hbox.addWidget(self.splitter)
+        self.hbox = QtWidgets.QVBoxLayout()
+        self.hbox.addWidget(self.scroller)
 
         self.widget = QtWidgets.QWidget(self)
-        self.widget.setLayout(hbox)
+        self.widget.setLayout(self.hbox)
 
         self.createActions()
         self.createMenus()
@@ -183,9 +179,7 @@ class Viewer(QtWidgets.QMainWindow):
 
     def itemUpdate(self):
         for item in self.view.image.items:
-            print('??')
-            self.splitter.addWidget(item)
-            #self.splitter.addWidget(item.txt)
+            self.hbox.addWidget(item)
 
     def createActions(self):
         self.openAct = QtWidgets.QAction("&Open...", self, shortcut="Ctrl+O",
@@ -224,15 +218,15 @@ class Viewer(QtWidgets.QMainWindow):
             # self.scaleFactor = 1.0
 
     def fit(self):
-        repixmap = self.view.pixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio)
-        self.view.pixmap = repixmap
-        self.view.setPixmap(self.view.pixmap)
-        self.view.adjustSize()
+#        repixmap = self.view.pixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio)
+#        self.view.pixmap = repixmap
+#        self.view.setPixmap(self.view.pixmap)
+#        self.view.adjustSize()
 
     def ogSize(self):
-        self.view.pixmap = self.view.ogpixmap
-        self.view.setPixmap(self.view.pixmap)
-        self.view.adjustSize()
+#        self.view.pixmap = self.view.ogpixmap
+#        self.view.setPixmap(self.view.pixmap)
+#        self.view.adjustSize()
 #%%
 
 if __name__ == '__main__':
