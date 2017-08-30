@@ -7,12 +7,14 @@ Created on Mon Jul 31 22:21:01 2017
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PIL import Image
+from pytesseract import *
 import cv2
 import numpy as np
 import pytesseract
 
-# Windows Tesseract
-pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files (x86)\\Tesseract-OCR\\tesseract'
+
+# Path of working folder on Disk
+src_path = "E:/Lab/Python/Project/OCR/"
 
 def get_string(img_path):
     # Read image with opencv
@@ -22,92 +24,168 @@ def get_string(img_path):
     # Convert to gray
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-#    # Apply dilation and erosion to remove some noise
-#    kernel = np.ones((1, 1), np.uint8)
-#    img = cv2.dilate(img, kernel, iterations=1)
-#    img = cv2.erode(img, kernel, iterations=1)
-#
+    # Apply dilation and erosion to remove some noise
+    kernel = np.ones((1, 1), np.uint8)
+    img = cv2.dilate(img, kernel, iterations=1)
+    img = cv2.erode(img, kernel, iterations=1)
+
     # Write image after removed noise
     cv2.imwrite("removed_noise.png", img)
 
-#    #  Apply threshold to get image with only black and white
-#    img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-#                                cv2.THRESH_BINARY, 51, 2)
+    #  Apply threshold to get image with only black and white
+    #img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2)
 
     # Write the image after apply opencv to do some ...
     cv2.imwrite("thres.png", img)
 
     # Recognize text with tesseract for python
-    result = pytesseract.image_to_string(Image.open("thres.png"), config='-psm 7')
+    result = pytesseract.image_to_string(Image.open("thres.png"))
 
     # Remove template file
     #os.remove(temp)
 
     print(result)
 
-class View(QtWidgets.QLabel):
-    def __init__(self):
-        super().__init__()
 
-        self.cropLabel = QtWidgets.QLabel(self)
+class Item(QtWidgets.QWidget):
+    """
+    Class qui décrit un item (caractéristique)
+    Un item doit posséder:
+        - une découpe d'image
+        - une zone de texte
+        - un N° d'identification
+    """
+    def __init__(self, cropPixmap, parent=None):
+        super(Item, self).__init__()
+
+        cropPixmap.save('output.png')
+        self.setLayout(QtWidgets.QHBoxLayout())
+        self.txt = QtWidgets.QLineEdit('test') #OCR to be performed
         self.label = QtWidgets.QLabel(self)
+        self.layout().addWidget(self.label)
+        self.layout().addWidget(self.txt)
+        self.label.setPixmap(cropPixmap)
+        self.label.adjustSize()
+        print('done')
 
-        self.ogpixmap = QtGui.QPixmap()
-        fileName = r'C:/Users/user11.HPO-SAMAT/Pictures/Lake.jpg'
-        image = QtGui.QImage(fileName)
+
+    def upadte_item(self):
+        self.update.em
+
+class Image(QtWidgets.QLabel):
+    """
+    Class où l'on effectue le rendu  partir d'un fichier image
+    """
+
+    #Signal pour la mise à jour des changements
+    itemsChanged = QtCore.pyqtSignal()
+
+    def __init__(self, filename):
+        super(Image, self).__init__()
+        #Connection du signal
+        self.itemsChanged.connect(self.act)
+        #Création de l'image
+        image = QtGui.QImage(filename)
         self.pixmap = QtGui.QPixmap.fromImage(image)
-        self.label.setPixmap(self.pixmap)
-        #self.label.adjustSize()
+        self.originQPoint = QtCore.QPoint(0,0)
+        #tableau des items
+        self.items = []
 
+    #%% Gestion captre d'écran
     def mousePressEvent(self, event):
         self.originQPoint = event.pos()
-        self.currentQRubberBand = QtWidgets.QRubberBand(QtWidgets.QRubberBand.Rectangle, self)
-        self.currentQRubberBand.setGeometry(QtCore.QRect(self.originQPoint, QtCore.QSize()))
+        self.currentQRubberBand = QtWidgets.QRubberBand(
+                QtWidgets.QRubberBand.Rectangle, self)
+        self.currentQRubberBand.setGeometry(
+                QtCore.QRect(self.originQPoint, QtCore.QSize()))
         self.currentQRubberBand.show()
 
     def mouseMoveEvent(self, event):
-        self.currentQRubberBand.setGeometry(QtCore.QRect(self.originQPoint, event.pos()).normalized())
+        self.currentQRubberBand.setGeometry(
+                QtCore.QRect(self.originQPoint, event.pos()).normalized())
 
-    def mouseReleaseEvent (self, event):
+    def mouseReleaseEvent(self, event):
+        print(self.items)
         self.currentQRubberBand.hide()
         currentQRect = self.currentQRubberBand.geometry()
         self.currentQRubberBand.deleteLater()
         cropPixmap = self.pixmap.copy(currentQRect)
-        self.cropLabel.setPixmap(cropPixmap)
-        cropPixmap.save('output.png')
-        print(pytesseract.image_to_string(Image.open('output.png')))
-        get_string('output.png')
+        self.items.append(Item(cropPixmap))
+        cropPixmap.save('testoutput.png')
+        self.itemsChanged.emit()
+        print('souis Ok')
+    #%%
 
+    def paintEvent(self, event):
+        """
+        Traçage des données
+        """
+        # Rayon + centre des annotations
+        radx = 10
+        rady = 10
+        center = QtCore.QPoint(self.originQPoint.x()+10,self.originQPoint.y()-5)
+        print('painting')
+        # Instanciation de l'objet
+        paint = QtGui.QPainter(self)
+        paint.begin(self)
+        # Traçage de l'image et des éléments
+        paint.drawPixmap(self.rect(), self.pixmap)
+        paint.setPen(QtCore.Qt.blue)
+        paint.setFont(QtGui.QFont('Decorative', 10))
+        paint.drawText(self.originQPoint, "123")
+        paint.drawEllipse(center, radx, rady)
+        paint.end()
 
+    def act(self):
+        print('signal émis')
 
+class View(QtWidgets.QWidget):
 
+    itemsChanged = QtCore.pyqtSignal()
 
+    def __init__(self):
+        super(View,self).__init__()
 
-
-
+        fileName = r'/home/sylvain/test.jpg'
+        self.image = Image(fileName)
+        self.setLayout(QtWidgets.QHBoxLayout())
+        self.layout().addWidget(self.image)
+        self.image.adjustSize()
+        #self.image.updateGeometry()
+        #self.image.update()
 
 
 class Viewer(QtWidgets.QMainWindow):
     def __init__(self):
-        super(Viewer, self).__init__()
+        super().__init__()
 
         self.view = View()
         self.scroller = QtWidgets.QScrollArea(self)
         self.scroller.setWidget(self.view)
         self.scroller.setWidgetResizable(True)
-        splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-        #splitter.addWidget(self.view)
-        splitter.addWidget(self.scroller)
-        splitter.addWidget(self.view.cropLabel)
+        self.scroller.adjustSize()
+        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        self.splitter.addWidget(self.scroller)
+
         hbox = QtWidgets.QVBoxLayout()
-        hbox.addWidget(self.scroller)
+        hbox.addWidget(self.splitter)
+
         self.widget = QtWidgets.QWidget(self)
         self.widget.setLayout(hbox)
 
         self.createActions()
         self.createMenus()
-        self.setCentralWidget(self.scroller)
+        self.setCentralWidget(self.widget)
 
+
+        self.view.image.itemsChanged.connect(self.itemUpdate)
+
+
+    def itemUpdate(self):
+        for item in self.view.image.items:
+            print('??')
+            self.splitter.addWidget(item)
+            #self.splitter.addWidget(item.txt)
 
     def createActions(self):
         self.openAct = QtWidgets.QAction("&Open...", self, shortcut="Ctrl+O",
@@ -137,24 +215,25 @@ class Viewer(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.information(self, "Image Viewer",
                         "Cannot load %s." % fileName)
                 return
-            self.view.pixmap = QtGui.QPixmap.fromImage(image)
-            self.view.ogpixmap = self.view.pixmap
-            self.view.label.setPixmap(self.view.pixmap)
-            self.view.label.adjustSize()
-            #self.view.label.updateGeometry()
+            self.view.image.pixmap = QtGui.QPixmap.fromImage(image)
+            self.view.image.ogpixmap = self.view.image.pixmap
+            self.view.image.setPixmap(self.view.image.pixmap)
+            self.view.image.adjustSize()
+            self.view.image.updateGeometry()
+            self.view.image.update()
             # self.scaleFactor = 1.0
 
     def fit(self):
         repixmap = self.view.pixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio)
         self.view.pixmap = repixmap
-        self.view.label.setPixmap(self.view.pixmap)
-        self.view.label.adjustSize()
+        self.view.setPixmap(self.view.pixmap)
+        self.view.adjustSize()
 
     def ogSize(self):
         self.view.pixmap = self.view.ogpixmap
-        self.view.label.setPixmap(self.view.pixmap)
-        self.view.label.adjustSize()
-
+        self.view.setPixmap(self.view.pixmap)
+        self.view.adjustSize()
+#%%
 
 if __name__ == '__main__':
     import sys
