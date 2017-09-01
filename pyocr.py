@@ -68,7 +68,6 @@ class Item(QtWidgets.QWidget):
         self.label.adjustSize()
         print('done')
 
-
     def upadte_item(self):
         self.update.em
 
@@ -90,6 +89,7 @@ class Image(QtWidgets.QLabel):
         self.originQPoint = QtCore.QPoint(0,0)
         #tableau des items
         self.items = []
+        self.itemNbr = 0
 
     #%% Gestion captre d'écran
     def mousePressEvent(self, event):
@@ -110,7 +110,8 @@ class Image(QtWidgets.QLabel):
         currentQRect = self.currentQRubberBand.geometry()
         self.currentQRubberBand.deleteLater()
         cropPixmap = self.pixmap.copy(currentQRect)
-        self.items.append(Item(cropPixmap))
+        self.itemNbr = self.itemNbr + 1
+        self.items.append((self.itemNbr ,self.originQPoint, Item(cropPixmap)))
         cropPixmap.save('testoutput.png')
         self.itemsChanged.emit()
         print('souis Ok')
@@ -123,7 +124,6 @@ class Image(QtWidgets.QLabel):
         # Rayon + centre des annotations
         radx = 10
         rady = 10
-        center = QtCore.QPoint(self.originQPoint.x()+10,self.originQPoint.y()-5)
         print('painting')
         # Instanciation de l'objet
         paint = QtGui.QPainter(self)
@@ -131,9 +131,11 @@ class Image(QtWidgets.QLabel):
         # Traçage de l'image et des éléments
         paint.drawPixmap(self.rect(), self.pixmap)
         paint.setPen(QtCore.Qt.blue)
-        paint.setFont(QtGui.QFont('Decorative', 10))
-        paint.drawText(self.originQPoint, "123")
-        paint.drawEllipse(center, radx, rady)
+        paint.setFont(QtGui.QFont('Arial', 15))
+        for item in self.items:
+            center = QtCore.QPoint(item[1].x()+10,item[1].y()-5)
+            paint.drawText(item[1],str(item[0]))
+            paint.drawEllipse(center, radx, rady)
         paint.end()
 
     def act(self):
@@ -179,7 +181,7 @@ class Viewer(QtWidgets.QMainWindow):
 
     def itemUpdate(self):
         for item in self.view.image.items:
-            self.hbox.addWidget(item)
+            self.hbox.addWidget(item[2])
 
     def createActions(self):
         self.openAct = QtWidgets.QAction("&Open...", self, shortcut="Ctrl+O",
@@ -218,12 +220,14 @@ class Viewer(QtWidgets.QMainWindow):
             # self.scaleFactor = 1.0
 
     def fit(self):
+        pass
 #        repixmap = self.view.pixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio)
 #        self.view.pixmap = repixmap
 #        self.view.setPixmap(self.view.pixmap)
 #        self.view.adjustSize()
 
     def ogSize(self):
+        pass
 #        self.view.pixmap = self.view.ogpixmap
 #        self.view.setPixmap(self.view.pixmap)
 #        self.view.adjustSize()
