@@ -12,9 +12,9 @@ import cv2
 import numpy as np
 import pytesseract
 
-
 # Path of working folder on Disk
 src_path = "E:/Lab/Python/Project/OCR/"
+
 
 def get_string(img_path):
     # Read image with opencv
@@ -33,7 +33,7 @@ def get_string(img_path):
     cv2.imwrite("removed_noise.png", img)
 
     #  Apply threshold to get image with only black and white
-    #img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2)
+    # img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2)
 
     # Write the image after apply opencv to do some ...
     cv2.imwrite("thres.png", img)
@@ -42,7 +42,7 @@ def get_string(img_path):
     result = pytesseract.image_to_string(Image.open("thres.png"))
 
     # Remove template file
-    #os.remove(temp)
+    # os.remove(temp)
 
     print(result)
 
@@ -55,12 +55,13 @@ class Item(QtWidgets.QWidget):
         - une zone de texte
         - un N° d'identification
     """
+
     def __init__(self, cropPixmap, parent=None):
         super(Item, self).__init__()
 
         cropPixmap.save('output.png')
         self.setLayout(QtWidgets.QHBoxLayout())
-        self.txt = QtWidgets.QLineEdit('test') #OCR to be performed
+        self.txt = QtWidgets.QLineEdit('test')  # OCR to be performed
         self.label = QtWidgets.QLabel(self)
         self.layout().addWidget(self.label)
         self.layout().addWidget(self.txt)
@@ -71,38 +72,40 @@ class Item(QtWidgets.QWidget):
     def upadte_item(self):
         self.update.em
 
+
 class Image(QtWidgets.QLabel):
     """
     Class où l'on effectue le rendu  partir d'un fichier image
     """
 
-    #Signal pour la mise à jour des changements
+    # Signal pour la mise à jour des changements
     itemsChanged = QtCore.pyqtSignal()
 
     def __init__(self, filename):
         super(Image, self).__init__()
-        #Connection du signal
+        # Connection du signal
         self.itemsChanged.connect(self.act)
-        #Création de l'image
+        # Création de l'image
         image = QtGui.QImage(filename)
         self.pixmap = QtGui.QPixmap.fromImage(image)
-        self.originQPoint = QtCore.QPoint(0,0)
-        #tableau des items
+        self.originQPoint = QtCore.QPoint(0, 0)
+        # tableau des items
         self.items = []
         self.itemNbr = 0
+        self.items2 = []
 
-    #%% Gestion captre d'écran
+    # %% Gestion captre d'écran
     def mousePressEvent(self, event):
         self.originQPoint = event.pos()
         self.currentQRubberBand = QtWidgets.QRubberBand(
-                QtWidgets.QRubberBand.Rectangle, self)
+            QtWidgets.QRubberBand.Rectangle, self)
         self.currentQRubberBand.setGeometry(
-                QtCore.QRect(self.originQPoint, QtCore.QSize()))
+            QtCore.QRect(self.originQPoint, QtCore.QSize()))
         self.currentQRubberBand.show()
 
     def mouseMoveEvent(self, event):
         self.currentQRubberBand.setGeometry(
-                QtCore.QRect(self.originQPoint, event.pos()).normalized())
+            QtCore.QRect(self.originQPoint, event.pos()).normalized())
 
     def mouseReleaseEvent(self, event):
         print(self.items)
@@ -111,11 +114,15 @@ class Image(QtWidgets.QLabel):
         self.currentQRubberBand.deleteLater()
         cropPixmap = self.pixmap.copy(currentQRect)
         self.itemNbr = self.itemNbr + 1
-        self.items.append((self.itemNbr ,self.originQPoint, Item(cropPixmap)))
+        self.items.append((self.itemNbr, self.originQPoint, Item(cropPixmap)))
+        self.items2.append({'itemNbr': self.itemNbr,
+                            'itemCtr': self.originQPoint,
+                            'itemPixmap': Item(cropPixmap)})
         cropPixmap.save('testoutput.png')
         self.itemsChanged.emit()
         print('souis Ok')
-    #%%
+
+    # %%
 
     def paintEvent(self, event):
         """
@@ -133,20 +140,20 @@ class Image(QtWidgets.QLabel):
         paint.setPen(QtCore.Qt.blue)
         paint.setFont(QtGui.QFont('Arial', 15))
         for item in self.items:
-            center = QtCore.QPoint(item[1].x()+10,item[1].y()-5)
-            paint.drawText(item[1],str(item[0]))
+            center = QtCore.QPoint(item[1].x() + 10, item[1].y() - 5)
+            paint.drawText(item[1], str(item[0]))
             paint.drawEllipse(center, radx, rady)
         paint.end()
 
     def act(self):
         print('signal émis')
 
-class View(QtWidgets.QWidget):
 
+class View(QtWidgets.QWidget):
     itemsChanged = QtCore.pyqtSignal()
 
     def __init__(self):
-        super(View,self).__init__()
+        super(View, self).__init__()
 
         fileName = r'/home/sylvain/test.jpg'
         self.image = Image(fileName)
@@ -158,15 +165,18 @@ class Viewer(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.setGeometry(200,200,800,600)
         self.view = View()
         self.scroller = QtWidgets.QScrollArea(self)
         self.scroller.setWidget(self.view)
         self.scroller.setWidgetResizable(True)
         self.scroller.adjustSize()
-        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        #        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        self.table = QtWidgets.QTableWidget(0, 3)
 
         self.hbox = QtWidgets.QVBoxLayout()
         self.hbox.addWidget(self.scroller)
+        self.hbox.addWidget(self.table)
 
         self.widget = QtWidgets.QWidget(self)
         self.widget.setLayout(self.hbox)
@@ -175,21 +185,20 @@ class Viewer(QtWidgets.QMainWindow):
         self.createMenus()
         self.setCentralWidget(self.widget)
 
-
         self.view.image.itemsChanged.connect(self.itemUpdate)
 
-
     def itemUpdate(self):
-        for item in self.view.image.items:
-            self.hbox.addWidget(item[2])
+        self.table.insertRow(0)
+        self.table.setItem(0, 0, QtWidgets.QTableWidgetItem(str(self.view.image.itemNbr)))
+        self.view.update()
 
     def createActions(self):
         self.openAct = QtWidgets.QAction("&Open...", self, shortcut="Ctrl+O",
-                              triggered=self.open)
+                                         triggered=self.open)
         self.fitAct = QtWidgets.QAction("&Resize...", self, shortcut="Ctrl+F",
-                              triggered=self.fit)
-        self.ogSizeAct = QtWidgets.QAction("&Original size ...",self,shortcut="ctrl+G",
-                              triggered=self.ogSize)
+                                        triggered=self.fit)
+        self.ogSizeAct = QtWidgets.QAction("&Original size ...", self, shortcut="ctrl+G",
+                                           triggered=self.ogSize)
 
     def createMenus(self):
         self.fileMenu = QtWidgets.QMenu("&File", self)
@@ -204,12 +213,12 @@ class Viewer(QtWidgets.QMainWindow):
 
     def open(self):
         fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File",
-                QtCore.QDir.currentPath())
+                                                            QtCore.QDir.currentPath())
         if fileName:
             image = QtGui.QImage(fileName)
             if image.isNull():
                 QtWidgets.QMessageBox.information(self, "Image Viewer",
-                        "Cannot load %s." % fileName)
+                                                  "Cannot load %s." % fileName)
                 return
             self.view.image.pixmap = QtGui.QPixmap.fromImage(image)
             self.view.image.ogpixmap = self.view.image.pixmap
@@ -221,20 +230,24 @@ class Viewer(QtWidgets.QMainWindow):
 
     def fit(self):
         pass
-#        repixmap = self.view.pixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio)
-#        self.view.pixmap = repixmap
-#        self.view.setPixmap(self.view.pixmap)
-#        self.view.adjustSize()
+
+    #        repixmap = self.view.pixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio)
+    #        self.view.pixmap = repixmap
+    #        self.view.setPixmap(self.view.pixmap)
+    #        self.view.adjustSize()
 
     def ogSize(self):
         pass
-#        self.view.pixmap = self.view.ogpixmap
+
+
+# self.view.pixmap = self.view.ogpixmap
 #        self.view.setPixmap(self.view.pixmap)
 #        self.view.adjustSize()
-#%%
+# %%
 
 if __name__ == '__main__':
     import sys
+
     app = QtWidgets.QApplication(sys.argv)
     Viewer = Viewer()
     Viewer.show()
