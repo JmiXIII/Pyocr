@@ -88,6 +88,7 @@ class Image(QtWidgets.QLabel):
         # Création de l'image
         image = QtGui.QImage(filename)
         self.pixmap = QtGui.QPixmap.fromImage(image)
+        self.setScaledContents(True)
         self.originQPoint = QtCore.QPoint(0, 0)
         # tableau des items
         self.items = []
@@ -112,13 +113,13 @@ class Image(QtWidgets.QLabel):
         self.currentQRubberBand.hide()
         currentQRect = self.currentQRubberBand.geometry()
         self.currentQRubberBand.deleteLater()
-        cropPixmap = self.pixmap.copy(currentQRect)
+        self.cropPixmap = self.pixmap.copy(currentQRect)
         self.itemNbr = self.itemNbr + 1
-        self.items.append((self.itemNbr, self.originQPoint, Item(cropPixmap)))
+        self.items.append((self.itemNbr, self.originQPoint, Item(self.cropPixmap)))
         self.items2.append({'itemNbr': self.itemNbr,
                             'itemCtr': self.originQPoint,
-                            'itemPixmap': Item(cropPixmap)})
-        cropPixmap.save('testoutput.png')
+                            'itemPixmap': Item(self.cropPixmap)})
+        self.cropPixmap.save('testoutput.png')
         self.itemsChanged.emit()
         print('souis Ok')
 
@@ -161,6 +162,14 @@ class View(QtWidgets.QWidget):
         self.layout().addWidget(self.image)
 
 
+
+class ImgWidget(QtWidgets.QLabel):
+
+    def __init__(self, pic, parent=None):
+        super(ImgWidget, self).__init__(parent)
+        self.pic = pic
+        self.setPixmap(self.pic)
+
 class Viewer(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
@@ -170,8 +179,8 @@ class Viewer(QtWidgets.QMainWindow):
         self.scroller = QtWidgets.QScrollArea(self)
         self.scroller.setWidget(self.view)
         self.scroller.setWidgetResizable(True)
-        self.scroller.adjustSize()
-        #        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        self.scroller.setGeometry(QtCore.QRect(40, 140, 361, 800))
+
         self.table = QtWidgets.QTableWidget(0, 3)
 
         self.hbox = QtWidgets.QVBoxLayout()
@@ -190,6 +199,7 @@ class Viewer(QtWidgets.QMainWindow):
     def itemUpdate(self):
         self.table.insertRow(0)
         self.table.setItem(0, 0, QtWidgets.QTableWidgetItem(str(self.view.image.itemNbr)))
+        self.table.setCellWidget(0,1,ImgWidget(self.view.image.cropPixmap))
         self.view.update()
 
     def createActions(self):
