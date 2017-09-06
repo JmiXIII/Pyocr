@@ -69,8 +69,8 @@ class Item(QtWidgets.QWidget):
         self.label.adjustSize()
         print('done')
 
-    def upadte_item(self):
-        self.update.em
+    # def upadte_item(self):
+        # self.update.em
 
 
 class Image(QtWidgets.QLabel):
@@ -114,6 +114,10 @@ class Image(QtWidgets.QLabel):
         currentQRect = self.currentQRubberBand.geometry()
         self.currentQRubberBand.deleteLater()
         self.cropPixmap = self.pixmap.copy(currentQRect)
+        size = self.cropPixmap.size()/2
+        print(size)
+        self.cropPixmap = self.cropPixmap.scaled(size, QtCore.Qt.KeepAspectRatio,
+                                                 transformMode=QtCore.Qt.SmoothTransformation)
         self.itemNbr = self.itemNbr + 1
         self.items.append((self.itemNbr, self.originQPoint, Item(self.cropPixmap)))
         self.items2.append({'itemNbr': self.itemNbr,
