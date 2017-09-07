@@ -6,22 +6,39 @@ import numpy as np
 import pytesseract
 
 class View(QtWidgets.QGraphicsView):
+
+    mouseReleased = QtCore.pyqtSignal()
     def __init__(self):
         super().__init__()
 
     def mousePressEvent(self, event):
         self.originQPoint = event.pos()
         self.currentQRubberBand = QtWidgets.QRubberBand(QtWidgets.QRubberBand.Rectangle, self)
-        self.currentQRubberBand.show()
+
 
     def mouseMoveEvent(self, event):
         self.currentQRubberBand.setGeometry(QtCore.QRect(self.originQPoint, event.pos()).normalized())
-        print('moved')
+        self.currentQRubberBand.show()
 
     def mouseReleaseEvent(self, event):
-        print('released')
+        print(self.items)
         self.currentQRubberBand.hide()
         self.currentQRect = self.currentQRubberBand.geometry()
+        print(self.currentQRect)
+        #self.currentQRubberBand.deleteLater()
+        self.mouseReleased.emit()
+        #self.cropPixmap = self.pixmap.copy(currentQRect)
+        # size = self.cropPixmap.size()/2
+        # print(size)
+        # self.cropPixmap = self.cropPixmap.scaled(size, QtCore.Qt.KeepAspectRatio,
+        #                                          transformMode=QtCore.Qt.SmoothTransformation)
+
+class ImgWidget(QtWidgets.QLabel):
+
+    def __init__(self, pic, parent=None):
+        super(ImgWidget, self).__init__(parent)
+        self.pic = pic
+        self.setPixmap(self.pic)
 
 class Viewer(QtWidgets.QMainWindow):
     def __init__(self):
@@ -39,6 +56,7 @@ class Viewer(QtWidgets.QMainWindow):
         self.splitter.addWidget(self.graphicsView)
         self.splitter.addWidget(self.table)
 
+        self.graphicsView.mouseReleased.connect(self.mReleasedAct)
 
         #self.hbox.addWidget(self.graphicsView)
         self.hbox.addWidget(self.splitter)
@@ -69,6 +87,15 @@ class Viewer(QtWidgets.QMainWindow):
         self.menuBar().addMenu(self.fileMenu)
 #        self.menuBar().addMenu(self.editMenu)
 
+    def mReleasedAct(self):
+        print('Mouse Released')
+        self.cropPixmap = self.pixmap.copy(self.graphicsView.currentQRect)
+        self.graphicsView.currentQRect
+        self.table.insertRow(0)
+        # self.table.setItem(0, 0, QtWidgets.QTableWidgetItem(str(self.view.image.itemNbr)))
+        self.table.setCellWidget(0,1,ImgWidget(self.cropPixmap))
+        self.update()
+
     def open_picture(self):
         fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File",
                                                             QtCore.QDir.currentPath())
@@ -83,7 +110,7 @@ class Viewer(QtWidgets.QMainWindow):
             self.pixmap = QtGui.QPixmap.fromImage(image)
 
             # important for centering the picture within the scene
-            #self.scene.setSceneRect(0, 0, self.pixmap.width(), self.pixmap.height())
+            self.scene.setSceneRect(0, 0, self.pixmap.width(), self.pixmap.height())
 
             self.scene.addPixmap(self.pixmap)                  # assign picture to the scene
             self.graphicsView.setScene(self.scene)              # assign scene to a view

@@ -88,7 +88,7 @@ class Image(QtWidgets.QLabel):
         # Création de l'image
         image = QtGui.QImage(filename)
         self.pixmap = QtGui.QPixmap.fromImage(image)
-        self.setScaledContents(True)
+        #self.layout().sizeConstraint()
         self.originQPoint = QtCore.QPoint(0, 0)
         # tableau des items
         self.items = []
@@ -183,7 +183,6 @@ class Viewer(QtWidgets.QMainWindow):
         self.scroller = QtWidgets.QScrollArea(self)
         self.scroller.setWidget(self.view)
         self.scroller.setWidgetResizable(True)
-        self.scroller.setGeometry(QtCore.QRect(40, 140, 361, 800))
 
         self.table = QtWidgets.QTableWidget(0, 3)
 
