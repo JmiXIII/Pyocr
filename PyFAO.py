@@ -5,6 +5,10 @@ import cv2
 import numpy as np
 import pytesseract
 
+'''
+https://stackoverflow.com/questions/12249875/mousepressevent-position-offset-in-qgraphicsview
+'''
+
 class View(QtWidgets.QGraphicsView):
 
     mouseReleased = QtCore.pyqtSignal()
