@@ -5,16 +5,43 @@ import cv2
 import numpy as np
 import pytesseract
 
+class View(QtWidgets.QGraphicsView):
+    def __init__(self):
+        super().__init__()
+
+    def mousePressEvent(self, event):
+        self.originQPoint = event.pos()
+        self.currentQRubberBand = QtWidgets.QRubberBand(QtWidgets.QRubberBand.Rectangle, self)
+        self.currentQRubberBand.show()
+
+    def mouseMoveEvent(self, event):
+        self.currentQRubberBand.setGeometry(QtCore.QRect(self.originQPoint, event.pos()).normalized())
+        print('moved')
+
+    def mouseReleaseEvent(self, event):
+        print('released')
+        self.currentQRubberBand.hide()
+        self.currentQRect = self.currentQRubberBand.geometry()
 
 class Viewer(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
 
         self.setGeometry(200,200,800,600)
-        self.graphicsView = QtWidgets.QGraphicsView()
+        self.graphicsView = View()
         self.hbox = QtWidgets.QVBoxLayout()
         self.scene = QtWidgets.QGraphicsScene()
-        self.hbox.addWidget(self.graphicsView)
+        self.table = QtWidgets.QTableWidget(0, 5)
+        self.table.setHorizontalHeaderItem(0,QtWidgets.QTableWidgetItem('#'))
+        self.table.setHorizontalHeaderLabels(("#;Type;CC;Requirement;Image").split(";"))
+        self.splitter = QtWidgets.QSplitter()
+        self.splitter.setOrientation(QtCore.Qt.Vertical)
+        self.splitter.addWidget(self.graphicsView)
+        self.splitter.addWidget(self.table)
+
+
+        #self.hbox.addWidget(self.graphicsView)
+        self.hbox.addWidget(self.splitter)
         self.widget = QtWidgets.QWidget()
         self.widget.setLayout(self.hbox)
         self.setCentralWidget(self.widget)
@@ -56,7 +83,7 @@ class Viewer(QtWidgets.QMainWindow):
             self.pixmap = QtGui.QPixmap.fromImage(image)
 
             # important for centering the picture within the scene
-            self.scene.setSceneRect(0, 0, self.pixmap.width(), self.pixmap.height())
+            #self.scene.setSceneRect(0, 0, self.pixmap.width(), self.pixmap.height())
 
             self.scene.addPixmap(self.pixmap)                  # assign picture to the scene
             self.graphicsView.setScene(self.scene)              # assign scene to a view
