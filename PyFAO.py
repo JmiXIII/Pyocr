@@ -135,13 +135,18 @@ class Viewer(QtWidgets.QMainWindow):
     def mReleasedAct(self):
         print('Mouse Released')
         self.cropPixmap = self.pixmap.copy(self.scene.currentQRect)
-        self.item = Item(1, self.cropPixmap, self.scene.originQPoint, 'Test')
+        size = self.cropPixmap.size() / 2
+        self.cropPixmap = self.cropPixmap.scaled(size, QtCore.Qt.KeepAspectRatio,
+                                                 transformMode=QtCore.Qt.SmoothTransformation)
+        self.item = Item(len(self.items)+1, self.cropPixmap, self.scene.originQPoint, 'Test')
         self.items.append(self.item)
         self.add_item(self.item)
 
     def add_item(self, item):
         self.table.insertRow(0)
         self.table.setCellWidget(0,1,ImgWidget(item.crop_pixmap))
+        self.table.setItem(0,0,QtWidgets.QTableWidgetItem(str(item.item_nbr)))
+        self.table.setItem(0,2,QtWidgets.QTableWidgetItem(item.designation))
         self.update()
 
     def open_picture(self):
