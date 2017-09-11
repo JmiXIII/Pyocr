@@ -164,7 +164,7 @@ class Viewer(QtWidgets.QMainWindow):
             self.graphicsView.setScene(self.scene)              # assign scene to a view
             self.graphicsView.show()                            # show the scene
 
-            # fits the picture within the scene
+            # fits the picture within the scene -
             #self.rect = self.graphicsView.sceneRect()
             #self.graphicsView.fitInView(self.rect, QtCore.Qt.KeepAspectRatio)
 
