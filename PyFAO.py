@@ -162,13 +162,24 @@ class Viewer(QtWidgets.QMainWindow):
         text = QtWidgets.QGraphicsSimpleTextItem(str(self.item.item_nbr))
         text.setPos(x+5, y+7)
         font = QtGui.QFont()
-        font.setBold(True)
-        text.setFont(font)
         text.setBrush(QtCore.Qt.blue)
         self.scene.addItem(text)
         print(text)
         self.scene.addEllipse(x, y, 30, 30, pen=stylo)
-        #self.graphicsView.show()
+
+    def ballonItem(self, item):
+
+        x = item.origin_point.x()
+        y = item.origin_point.y()
+        nbr = str(item.item_nbr)
+        stylo = QtGui.QPen(QtCore.Qt.blue)
+        stylo.setWidth(3)
+        text = QtWidgets.QGraphicsSimpleTextItem(nbr)
+        text.setPos(x+5, y+7)
+        text.setBrush(QtCore.Qt.blue)
+        self.scene.addItem(text)
+        print(text)
+        self.scene.addEllipse(x, y, 30, 30, pen=stylo)
 
     def add_item(self, item):
         self.table.insertRow(0)
@@ -176,6 +187,15 @@ class Viewer(QtWidgets.QMainWindow):
         self.table.setItem(0,0,QtWidgets.QTableWidgetItem(str(item.item_nbr)))
         self.table.setItem(0,2,QtWidgets.QTableWidgetItem(item.designation))
         self.update()
+
+    def removeItem(self,nbr):
+        for i, d in enumerate(items):
+            if d['item_nbr'] == nbr:
+                items = items.pop(i)
+                break
+
+    def refreshView(self):
+        pass
 
     def open_picture(self):
         fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File",
@@ -194,12 +214,12 @@ class Viewer(QtWidgets.QMainWindow):
             self.scene.setSceneRect(0, 0, self.pixmap.width(), self.pixmap.height())
 
             self.scene.addPixmap(self.pixmap)                  # assign picture to the scene
-            self.graphicsView.setScene(self.scene)              # assign scene to a view
-            self.graphicsView.show()                            # show the scene
+            self.graphicsView.setScene(self.scene)             # assign scene to a view
+            self.graphicsView.show()                           # show the scene
 
             # fits the picture within the scene -
-            #self.rect = self.graphicsView.sceneRect()
-            #self.graphicsView.fitInView(self.rect, QtCore.Qt.KeepAspectRatio)
+            # self.rect = self.graphicsView.sceneRect()
+            # self.graphicsView.fitInView(self.rect, QtCore.Qt.KeepAspectRatio)
 
     def settings(self):
         # use a custom location
@@ -221,6 +241,7 @@ class Viewer(QtWidgets.QMainWindow):
     def initSettings(self, items):
         for item in items:
             self.add_item(item)
+            self.ballonItem(item)
 
     def writeSettings(self):
         settings = self.settings()
