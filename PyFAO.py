@@ -44,16 +44,20 @@ class Scene(QtWidgets.QGraphicsScene):
         self.originCropPoint = event.scenePos()
 
     def mouseMoveEvent(self, event):
+        print('moving')
         self.currentQRubberBand.setGeometry(QtCore.QRect(self.originQPoint, event.screenPos()))
         self.currentQRubberBand.show()
 
+
     def mouseReleaseEvent(self, event):
+        self.currentQRubberBand.deleteLater()
         self.currentQRubberBand.hide()
         self.currentQRect = self.currentQRubberBand.geometry()
         self.currentQRect = QtCore.QRect(self.originCropPoint.toPoint(), event.scenePos().toPoint())
-        print(self.currentQRect)
-        self.currentQRubberBand.deleteLater()
+        #print(self.currentQRect)
+
         self.mouseReleased.emit()
+
         # self.cropPixmap = self.pixmap.copy(currentQRect)
         # size = self.cropPixmap.size()/2
         # print(size)
@@ -76,13 +80,14 @@ class Item:
 
 class Viewer(QtWidgets.QMainWindow):
     def __init__(self):
-        super().__init__()
+        super(Viewer, self).__init__()
 
         self.items = []
 
         # UI setup
         self.setGeometry(200,200,800,600)
         self.graphicsView = QtWidgets.QGraphicsView()
+        self.graphicsView.setRenderHint(QtGui.QPainter.Antialiasing)
         self.hbox = QtWidgets.QVBoxLayout()
         self.scene = Scene(self)
         self.table = QtWidgets.QTableWidget(0, 5)
@@ -92,8 +97,6 @@ class Viewer(QtWidgets.QMainWindow):
         self.splitter.setOrientation(QtCore.Qt.Vertical)
         self.splitter.addWidget(self.graphicsView)
         self.splitter.addWidget(self.table)
-
-        self.test=['rt']
 
         self.scene.mouseReleased.connect(self.mReleasedAct)
 
@@ -107,12 +110,19 @@ class Viewer(QtWidgets.QMainWindow):
         self.createMenus()
 
     def createActions(self):
-        self.openAct = QtWidgets.QAction("&Open...", self, shortcut="Ctrl+O",
+        self.openAct = QtWidgets.QAction("&Import DWG", self, shortcut="Ctrl+O",
                                          triggered=self.open_picture)
         self.settingsSaveAct = QtWidgets.QAction("&Import data", self, shortcut="Ctrl+I",
                                                  triggered=self.readSettings)
-        self.saveAct = QtWidgets.QAction("&Save project as", self, shortcut="Ctrl+S",
+        self.saveAct = QtWidgets.QAction("&Export data", self, shortcut="Ctrl+S",
                                          triggered=self.save_file)
+        self.exportProjAct = QtWidgets.QAction('&Save Full project as', self, shortcut="Ctrl+E",
+                                               triggered=self.exportProject)
+        self.openProjAct = QtWidgets.QAction('&Open project', self, shortcut="Ctrl+P",
+                                               triggered=self.openProject)
+        self.exportDwgAct = QtWidgets.QAction('&Export DWG as PDF', self, shortcut="Ctrl+D",
+                                               triggered=self.exportDWG)
+
         # self.fitAct = QtWidgets.QAction("&Resize...", self, shortcut="Ctrl+F",
         #                                 triggered=self.fit)
         # self.ogSizeAct = QtWidgets.QAction("&Original size ...", self, shortcut="ctrl+G",
@@ -124,16 +134,18 @@ class Viewer(QtWidgets.QMainWindow):
         self.fileMenu.addAction(self.openAct)
         self.fileMenu.addAction(self.settingsSaveAct)
         self.fileMenu.addAction(self.saveAct)
+        self.fileMenu.addAction(self.openProjAct)
+        self.fileMenu.addAction(self.exportProjAct)
+        self.fileMenu.addAction(self.exportDwgAct)
 
         # self.editMenu = QtWidgets.QMenu("&Edit", self)
         # self.editMenu.addAction(self.fitAct)
         # self.editMenu.addAction(self.ogSizeAct)
 
         self.menuBar().addMenu(self.fileMenu)
-#        self.menuBar().addMenu(self.editMenu)
 
     def mReleasedAct(self):
-        print('Mouse Released')
+        # Handle Table feeding
         self.cropPixmap = self.pixmap.copy(self.scene.currentQRect)
         size = self.cropPixmap.size() / 2
         self.cropPixmap = self.cropPixmap.scaled(size, QtCore.Qt.KeepAspectRatio,
@@ -141,6 +153,22 @@ class Viewer(QtWidgets.QMainWindow):
         self.item = Item(len(self.items)+1, self.cropPixmap, self.scene.originQPoint, 'Test')
         self.items.append(self.item)
         self.add_item(self.item)
+
+        # Handle ballooning
+        x = self.scene.originCropPoint.x()
+        y = self.scene.originCropPoint.y()
+        stylo = QtGui.QPen(QtCore.Qt.blue)
+        stylo.setWidth(3)
+        text = QtWidgets.QGraphicsSimpleTextItem(str(self.item.item_nbr))
+        text.setPos(x+5, y+7)
+        font = QtGui.QFont()
+        font.setBold(True)
+        text.setFont(font)
+        text.setBrush(QtCore.Qt.blue)
+        self.scene.addItem(text)
+        print(text)
+        self.scene.addEllipse(x, y, 30, 30, pen=stylo)
+        #self.graphicsView.show()
 
     def add_item(self, item):
         self.table.insertRow(0)
@@ -205,11 +233,17 @@ class Viewer(QtWidgets.QMainWindow):
             settings.setValue('designation', item.designation)
         settings.endArray()
 
-
-
     def save_file(self):
         self.writeSettings()
 
+    def exportProject(self):
+        pass
+
+    def openProject(self):
+        pass
+
+    def exportDWG(self):
+        pass
 
 if __name__ == '__main__':
     import sys
