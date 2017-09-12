@@ -122,6 +122,8 @@ class Viewer(QtWidgets.QMainWindow):
                                                triggered=self.openProject)
         self.exportDwgAct = QtWidgets.QAction('&Export DWG as PDF', self, shortcut="Ctrl+D",
                                                triggered=self.exportDWG)
+        self.listAct = QtWidgets.QAction('&List Items in DWG', self, shortcut="Ctrl+L",
+                                            triggered=self.listItems)
 
         # self.fitAct = QtWidgets.QAction("&Resize...", self, shortcut="Ctrl+F",
         #                                 triggered=self.fit)
@@ -138,11 +140,12 @@ class Viewer(QtWidgets.QMainWindow):
         self.fileMenu.addAction(self.exportProjAct)
         self.fileMenu.addAction(self.exportDwgAct)
 
-        # self.editMenu = QtWidgets.QMenu("&Edit", self)
-        # self.editMenu.addAction(self.fitAct)
+        self.editMenu = QtWidgets.QMenu("&Edit", self)
+        self.editMenu.addAction(self.listAct)
         # self.editMenu.addAction(self.ogSizeAct)
 
         self.menuBar().addMenu(self.fileMenu)
+
 
     def mReleasedAct(self):
         # Handle Table feeding
@@ -150,22 +153,23 @@ class Viewer(QtWidgets.QMainWindow):
         size = self.cropPixmap.size() / 2
         self.cropPixmap = self.cropPixmap.scaled(size, QtCore.Qt.KeepAspectRatio,
                                                  transformMode=QtCore.Qt.SmoothTransformation)
-        self.item = Item(len(self.items)+1, self.cropPixmap, self.scene.originQPoint, 'Test')
+        self.item = Item(len(self.items)+1, self.cropPixmap, self.scene.originCropPoint, 'Test')
         self.items.append(self.item)
         self.add_item(self.item)
+        self.ballonItem(self.item)
 
         # Handle ballooning
-        x = self.scene.originCropPoint.x()
-        y = self.scene.originCropPoint.y()
-        stylo = QtGui.QPen(QtCore.Qt.blue)
-        stylo.setWidth(3)
-        text = QtWidgets.QGraphicsSimpleTextItem(str(self.item.item_nbr))
-        text.setPos(x+5, y+7)
-        font = QtGui.QFont()
-        text.setBrush(QtCore.Qt.blue)
-        self.scene.addItem(text)
-        print(text)
-        self.scene.addEllipse(x, y, 30, 30, pen=stylo)
+        # x = self.scene.originCropPoint.x()
+        # y = self.scene.originCropPoint.y()
+        # stylo = QtGui.QPen(QtCore.Qt.blue)
+        # stylo.setWidth(3)
+        # text = QtWidgets.QGraphicsSimpleTextItem(str(self.item.item_nbr))
+        # text.setPos(x+5, y+7)
+        # font = QtGui.QFont()
+        # text.setBrush(QtCore.Qt.blue)
+        # self.scene.addItem(text)
+        # print(text)
+        # self.scene.addEllipse(x, y, 30, 30, pen=stylo)
 
     def ballonItem(self, item):
 
@@ -174,9 +178,12 @@ class Viewer(QtWidgets.QMainWindow):
         nbr = str(item.item_nbr)
         stylo = QtGui.QPen(QtCore.Qt.blue)
         stylo.setWidth(3)
+        stylotxt = QtGui.QPen(QtCore.Qt.blue)
+        stylotxt.setWidth(1)
         text = QtWidgets.QGraphicsSimpleTextItem(nbr)
         text.setPos(x+5, y+7)
-        text.setBrush(QtCore.Qt.blue)
+        #text.setBrush(QtCore.Qt.blue)
+        text.setPen(stylotxt)
         self.scene.addItem(text)
         print(text)
         self.scene.addEllipse(x, y, 30, 30, pen=stylo)
@@ -194,7 +201,9 @@ class Viewer(QtWidgets.QMainWindow):
                 items = items.pop(i)
                 break
 
-    def refreshView(self):
+    def listItems(self):
+        items = self.items
+        print(items)
         pass
 
     def open_picture(self):
