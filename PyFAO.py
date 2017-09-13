@@ -91,6 +91,7 @@ class Viewer(QtWidgets.QMainWindow):
         self.hbox = QtWidgets.QVBoxLayout()
         self.scene = Scene(self)
         self.table = QtWidgets.QTableWidget(0, 5)
+        self.table.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
         self.table.setHorizontalHeaderItem(0,QtWidgets.QTableWidgetItem('#'))
         self.table.setHorizontalHeaderLabels(("#;Type;CC;Requirement;Image").split(";"))
         self.splitter = QtWidgets.QSplitter()
@@ -124,6 +125,7 @@ class Viewer(QtWidgets.QMainWindow):
                                                triggered=self.exportDWG)
         self.listAct = QtWidgets.QAction('&List Items in DWG', self, shortcut="Ctrl+L",
                                             triggered=self.listItems)
+        self.removeItemAct = QtWidgets.QAction('&Remove Item',self, triggered=self.removeItem)
 
         # self.fitAct = QtWidgets.QAction("&Resize...", self, shortcut="Ctrl+F",
         #                                 triggered=self.fit)
@@ -142,10 +144,11 @@ class Viewer(QtWidgets.QMainWindow):
 
         self.editMenu = QtWidgets.QMenu("&Edit", self)
         self.editMenu.addAction(self.listAct)
-        # self.editMenu.addAction(self.ogSizeAct)
 
         self.menuBar().addMenu(self.fileMenu)
 
+        # Context Menu for tableWidget
+        self.table.addAction(self.removeItemAct)
 
     def mReleasedAct(self):
         # Handle Table feeding
@@ -196,10 +199,12 @@ class Viewer(QtWidgets.QMainWindow):
         self.update()
 
     def removeItem(self,nbr):
-        for i, d in enumerate(items):
-            if d['item_nbr'] == nbr:
-                items = items.pop(i)
-                break
+        print(nbr)
+        # pass
+        # for i, d in enumerate(items):
+        #     if d['item_nbr'] == nbr:
+        #         items = items.pop(i)
+        #         break
 
     def listItems(self):
         items = self.items
