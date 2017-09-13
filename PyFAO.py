@@ -92,7 +92,7 @@ class Viewer(QtWidgets.QMainWindow):
         self.scene = Scene(self)
         self.table = QtWidgets.QTableWidget(0, 5)
         self.table.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
-        self.table.setHorizontalHeaderItem(0,QtWidgets.QTableWidgetItem('#'))
+        # self.table.setHorizontalHeaderItem(0,QtWidgets.QTableWidgetItem('#'))
         self.table.setHorizontalHeaderLabels(("#;Type;CC;Requirement;Image").split(";"))
         self.splitter = QtWidgets.QSplitter()
         self.splitter.setOrientation(QtCore.Qt.Vertical)
@@ -159,20 +159,7 @@ class Viewer(QtWidgets.QMainWindow):
         self.item = Item(len(self.items)+1, self.cropPixmap, self.scene.originCropPoint, 'Test')
         self.items.append(self.item)
         self.add_item(self.item)
-        self.ballonItem(self.item)
-
-        # Handle ballooning
-        # x = self.scene.originCropPoint.x()
-        # y = self.scene.originCropPoint.y()
-        # stylo = QtGui.QPen(QtCore.Qt.blue)
-        # stylo.setWidth(3)
-        # text = QtWidgets.QGraphicsSimpleTextItem(str(self.item.item_nbr))
-        # text.setPos(x+5, y+7)
-        # font = QtGui.QFont()
-        # text.setBrush(QtCore.Qt.blue)
-        # self.scene.addItem(text)
-        # print(text)
-        # self.scene.addEllipse(x, y, 30, 30, pen=stylo)
+        # self.ballonItem(self.item)
 
     def ballonItem(self, item):
 
@@ -196,15 +183,21 @@ class Viewer(QtWidgets.QMainWindow):
         self.table.setCellWidget(0,1,ImgWidget(item.crop_pixmap))
         self.table.setItem(0,0,QtWidgets.QTableWidgetItem(str(item.item_nbr)))
         self.table.setItem(0,2,QtWidgets.QTableWidgetItem(item.designation))
+        self.ballonItem(item)
         self.update()
 
-    def removeItem(self,nbr):
-        print(nbr)
-        # pass
-        # for i, d in enumerate(items):
-        #     if d['item_nbr'] == nbr:
-        #         items = items.pop(i)
-        #         break
+    def removeItem(self):
+        row = self.table.currentRow()
+        nbr = self.table.item(row, 0).text()
+        for i, d in enumerate(self.items):
+            if str(d.item_nbr) == nbr:
+                self.items.pop(i)
+                break
+        self.scene.clear()
+        self.scene.addPixmap(self.pixmap)
+        self.table.setRowCount(0)
+        for item in self.items:
+            self.add_item(item)
 
     def listItems(self):
         items = self.items
@@ -215,14 +208,14 @@ class Viewer(QtWidgets.QMainWindow):
         fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File",
                                                             QtCore.QDir.currentPath())
         if fileName:
-            image = QtGui.QImage(fileName)
-            if image.isNull():
+            self.image = QtGui.QImage(fileName)
+            if self.image.isNull():
                 QtWidgets.QMessageBox.information(self, "Image Viewer",
                                                   "Cannot load %s." % fileName)
                 return
 
             self.scene.clear()                                  # clear graphics scene
-            self.pixmap = QtGui.QPixmap.fromImage(image)
+            self.pixmap = QtGui.QPixmap.fromImage(self.image)
 
             # important for centering the picture within the scene
             self.scene.setSceneRect(0, 0, self.pixmap.width(), self.pixmap.height())
@@ -255,7 +248,7 @@ class Viewer(QtWidgets.QMainWindow):
     def initSettings(self, items):
         for item in items:
             self.add_item(item)
-            self.ballonItem(item)
+            #self.ballonItem(item)
 
     def writeSettings(self):
         settings = self.settings()
