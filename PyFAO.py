@@ -10,6 +10,37 @@ import pickle
 https://stackoverflow.com/questions/12249875/mousepressevent-position-offset-in-qgraphicsview
 '''
 
+def get_string(img_path):
+    # # Read image with opencv
+    # print('----------')
+    # img = cv2.imread(img_path)
+    #
+    # # Convert to gray
+    # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #
+    # # Apply dilation and erosion to remove some noise
+    # kernel = np.ones((1, 1), np.uint8)
+    # img = cv2.dilate(img, kernel, iterations=1)
+    # img = cv2.erode(img, kernel, iterations=1)
+    #
+    # # Write image after removed noise
+    # cv2.imwrite("removed_noise.png", img)
+    #
+    # #  Apply threshold to get image with only black and white
+    # # img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2)
+    #
+    # # Write the image after apply opencv to do some ...
+    # cv2.imwrite("thres.png", img)
+    #
+    # # Recognize text with tesseract for python
+    result = pytesseract.image_to_string(Image.open("output.png"))
+
+    # Remove template file
+    # os.remove(temp)
+
+    print(result)
+
+
 class View(QtWidgets.QGraphicsView):
 
     mouseReleased = QtCore.pyqtSignal()
@@ -112,19 +143,16 @@ class Viewer(QtWidgets.QMainWindow):
         self.createMenus()
 
     def createActions(self):
-        self.openAct = QtWidgets.QAction("&Importer une image", self, shortcut="Ctrl+O",
+        # noinspection PyArgumentList
+        self.openAct = QtWidgets.QAction("&Importer une image...", self, shortcut="Ctrl+I",
                                          triggered=self.open_picture)
-        self.settingsSaveAct = QtWidgets.QAction("&Importer les données", self, shortcut="Ctrl+I",
-                                                 triggered=self.readSettings)
-        self.saveAct = QtWidgets.QAction("&Exporter les données", self, shortcut="Ctrl+S",
+        self.openProjAct = QtWidgets.QAction('&Ouvrir le projet...', self, shortcut="Ctrl+O",
+                                               triggered=self.readSettings)
+        self.saveAct = QtWidgets.QAction("&Sauver le Projet sous ...", self, shortcut="Ctrl+S",
                                          triggered=self.save_file)
-        self.exportProjAct = QtWidgets.QAction("&Sauvegarder le projet sous", self, shortcut="Ctrl+E",
-                                               triggered=self.exportProject)
-        self.openProjAct = QtWidgets.QAction('&Ouvrir le projet', self, shortcut="Ctrl+P",
-                                               triggered=self.openProject)
-        self.exportDwgAct = QtWidgets.QAction('&Export DWG as PDF', self, shortcut="Ctrl+D",
+        self.exportDwgAct = QtWidgets.QAction('Exporter en image PDF...', self, shortcut="Ctrl+D",
                                                triggered=self.exportDWG)
-        self.listAct = QtWidgets.QAction("&List Items in DWG", self, shortcut="Ctrl+L",
+        self.listAct = QtWidgets.QAction("&Lister les items du plan", self, shortcut="Ctrl+L",
                                             triggered=self.listItems)
         self.removeItemAct = QtWidgets.QAction("&Remove Item",self, triggered=self.removeItem)
         self.sortItemNbrAct = QtWidgets.QAction("&Renuméroter",self, triggered=self.sortItemNbr)
@@ -138,10 +166,8 @@ class Viewer(QtWidgets.QMainWindow):
     def createMenus(self):
         self.fileMenu = QtWidgets.QMenu("&File", self)
         self.fileMenu.addAction(self.openAct)
-        self.fileMenu.addAction(self.settingsSaveAct)
-        self.fileMenu.addAction(self.saveAct)
         self.fileMenu.addAction(self.openProjAct)
-        self.fileMenu.addAction(self.exportProjAct)
+        self.fileMenu.addAction(self.saveAct)
         self.fileMenu.addAction(self.exportDwgAct)
 
         self.editMenu = QtWidgets.QMenu("&Edit", self)
@@ -164,6 +190,9 @@ class Viewer(QtWidgets.QMainWindow):
             self.image = self.pixmap
         self.items.append(self.item)
         self.add_item(self.item)
+        self.cropPixmap.save('output.png')
+        path = QtCore.QDir.currentPath()+r'output.png'
+        get_string(path)
         self.hasFocus()
 
     def defineItemNbr(self):
@@ -250,11 +279,19 @@ class Viewer(QtWidgets.QMainWindow):
 
     def settings(self):
         # use a custom location
-        return QtCore.QSettings('app.conf', QtCore.QSettings.IniFormat)
+        fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File",
+                                                            QtCore.QDir.currentPath(),"hpo (*.hpo)", "*.hpo")
+        if not fileName:
+            return
+        return QtCore.QSettings(fileName, QtCore.QSettings.IniFormat)
 
     def readSettings(self):
         self.items = []
-        settings = self.settings()
+        fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File",
+                                                            QtCore.QDir.currentPath(),"hpo (*.hpo)",".hpo")
+        if not fileName:
+            return
+        settings = QtCore.QSettings(fileName, QtCore.QSettings.IniFormat)
         for index in range(settings.beginReadArray('items')):
             settings.setArrayIndex(index)
             self.items.append(Item(
@@ -277,7 +314,11 @@ class Viewer(QtWidgets.QMainWindow):
 
 
     def writeSettings(self):
-        settings = self.settings()
+        fileName, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save File",
+                                                            ".hpo","hpo (*.hpo)",".hpo")
+        if not fileName:
+            return
+        settings = QtCore.QSettings(fileName, QtCore.QSettings.IniFormat)
         settings.beginWriteArray('items')
         for index, item in enumerate(self.items):
             settings.setArrayIndex(index)
@@ -294,14 +335,14 @@ class Viewer(QtWidgets.QMainWindow):
     def save_file(self):
         self.writeSettings()
 
-    def exportProject(self):
-        pass
-
-    def openProject(self):
-        pass
-
     def exportDWG(self):
-        pass
+        filename, _ = QtWidgets.QFileDialog.getSaveFileName(self,"export PDF",".pdf", "pdf (*.pdf)","pdf")
+        pdf_writer = QtGui.QPdfWriter(filename)
+        painter = QtGui.QPainter()
+        painter.begin(pdf_writer)
+        self.graphicsView.render(painter)
+        painter.end()
+
 
 if __name__ == '__main__':
     import sys
