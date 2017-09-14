@@ -71,11 +71,12 @@ class ImgWidget(QtWidgets.QLabel):
         self.setPixmap(self.pic)
 
 class Item:
-    def __init__(self, item_nbr, crop_pixmap, originepoint, designation):
+    def __init__(self, item_nbr, crop_pixmap, originepoint, designation, image):
         self.item_nbr = item_nbr            # integer
         self.crop_pixmap = crop_pixmap      # QPixmap
-        self.origin_point = originepoint     # QPoint
+        self.origin_point = originepoint    # QPoint
         self.designation = designation      # str
+        self.image = image                  # image only for item 1
 
 
 class Viewer(QtWidgets.QMainWindow):
@@ -158,7 +159,9 @@ class Viewer(QtWidgets.QMainWindow):
         size = self.cropPixmap.size() / 2
         self.cropPixmap = self.cropPixmap.scaled(size, QtCore.Qt.KeepAspectRatio,
                                                  transformMode=QtCore.Qt.SmoothTransformation)
-        self.item = Item(self.defineItemNbr(), self.cropPixmap, self.scene.originCropPoint, 'Test')
+        self.item = Item(self.defineItemNbr(), self.cropPixmap, self.scene.originCropPoint, 'Test',None)
+        if self.item.item_nbr ==1:
+            self.image = self.pixmap
         self.items.append(self.item)
         self.add_item(self.item)
         self.hasFocus()
@@ -212,8 +215,6 @@ class Viewer(QtWidgets.QMainWindow):
     def refreshScene(self):
         self.scene.clear()
         self.scene.addPixmap(self.pixmap)
-        self.scene.clear()
-        self.scene.addPixmap(self.pixmap)
         self.table.setRowCount(0)
         for item in self.items:
             self.add_item(item)
@@ -261,13 +262,19 @@ class Viewer(QtWidgets.QMainWindow):
                 settings.value('pixmap', None, QtGui.QPixmap),
                 settings.value('point', None, QtCore.QPoint),
                 settings.value('designation', '', str),
+                settings.value('image',None, QtGui.QPixmap),
                 ))
         self.initSettings(self.items)
 
     def initSettings(self, items):
+        self.pixmap = items[0].image
+        self.table.setRowCount(0)
+        self.scene.addPixmap(self.pixmap)  # assign picture to the scene
+        self.graphicsView.setScene(self.scene)  # assign scene to a view
+        self.graphicsView.show()  # show the scene
         for item in items:
             self.add_item(item)
-            #self.ballonItem(item)
+
 
     def writeSettings(self):
         settings = self.settings()
@@ -278,6 +285,10 @@ class Viewer(QtWidgets.QMainWindow):
             settings.setValue('pixmap', item.crop_pixmap)
             settings.setValue('point', item.origin_point)
             settings.setValue('designation', item.designation)
+            if item.item_nbr == 1:
+                settings.setValue('image', self.pixmap)
+            else:
+                settings.setValue('image', None)
         settings.endArray()
 
     def save_file(self):
