@@ -111,21 +111,22 @@ class Viewer(QtWidgets.QMainWindow):
         self.createMenus()
 
     def createActions(self):
-        self.openAct = QtWidgets.QAction("&Import DWG", self, shortcut="Ctrl+O",
+        self.openAct = QtWidgets.QAction("&Importer une image", self, shortcut="Ctrl+O",
                                          triggered=self.open_picture)
-        self.settingsSaveAct = QtWidgets.QAction("&Import data", self, shortcut="Ctrl+I",
+        self.settingsSaveAct = QtWidgets.QAction("&Importer les données", self, shortcut="Ctrl+I",
                                                  triggered=self.readSettings)
-        self.saveAct = QtWidgets.QAction("&Export data", self, shortcut="Ctrl+S",
+        self.saveAct = QtWidgets.QAction("&Exporter les données", self, shortcut="Ctrl+S",
                                          triggered=self.save_file)
-        self.exportProjAct = QtWidgets.QAction('&Save Full project as', self, shortcut="Ctrl+E",
+        self.exportProjAct = QtWidgets.QAction("&Sauvegarder le projet sous", self, shortcut="Ctrl+E",
                                                triggered=self.exportProject)
-        self.openProjAct = QtWidgets.QAction('&Open project', self, shortcut="Ctrl+P",
+        self.openProjAct = QtWidgets.QAction('&Ouvrir le projet', self, shortcut="Ctrl+P",
                                                triggered=self.openProject)
         self.exportDwgAct = QtWidgets.QAction('&Export DWG as PDF', self, shortcut="Ctrl+D",
                                                triggered=self.exportDWG)
-        self.listAct = QtWidgets.QAction('&List Items in DWG', self, shortcut="Ctrl+L",
+        self.listAct = QtWidgets.QAction("&List Items in DWG", self, shortcut="Ctrl+L",
                                             triggered=self.listItems)
-        self.removeItemAct = QtWidgets.QAction('&Remove Item',self, triggered=self.removeItem)
+        self.removeItemAct = QtWidgets.QAction("&Remove Item",self, triggered=self.removeItem)
+        self.sortItemNbrAct = QtWidgets.QAction("&Renuméroter",self, triggered=self.sortItemNbr)
 
         # self.fitAct = QtWidgets.QAction("&Resize...", self, shortcut="Ctrl+F",
         #                                 triggered=self.fit)
@@ -149,6 +150,7 @@ class Viewer(QtWidgets.QMainWindow):
 
         # Context Menu for tableWidget
         self.table.addAction(self.removeItemAct)
+        self.table.addAction(self.sortItemNbrAct)
 
     def mReleasedAct(self):
         # Handle Table feeding
@@ -156,10 +158,22 @@ class Viewer(QtWidgets.QMainWindow):
         size = self.cropPixmap.size() / 2
         self.cropPixmap = self.cropPixmap.scaled(size, QtCore.Qt.KeepAspectRatio,
                                                  transformMode=QtCore.Qt.SmoothTransformation)
-        self.item = Item(len(self.items)+1, self.cropPixmap, self.scene.originCropPoint, 'Test')
+        self.item = Item(self.defineItemNbr(), self.cropPixmap, self.scene.originCropPoint, 'Test')
         self.items.append(self.item)
         self.add_item(self.item)
-        # self.ballonItem(self.item)
+        self.hasFocus()
+
+    def defineItemNbr(self):
+        l = [0]
+        for i, d in enumerate(self.items):
+            l.append(d.item_nbr)
+        itemNbr = max(l)+1
+        return(itemNbr)
+
+    def sortItemNbr(self):
+        for i,item in enumerate(self.items):
+            item.item_nbr = i+1
+        self.refreshScene()
 
     def ballonItem(self, item):
 
@@ -180,7 +194,7 @@ class Viewer(QtWidgets.QMainWindow):
 
     def add_item(self, item):
         self.table.insertRow(0)
-        self.table.setCellWidget(0,1,ImgWidget(item.crop_pixmap))
+        self.table.setCellWidget(0,4,ImgWidget(item.crop_pixmap))
         self.table.setItem(0,0,QtWidgets.QTableWidgetItem(str(item.item_nbr)))
         self.table.setItem(0,2,QtWidgets.QTableWidgetItem(item.designation))
         self.ballonItem(item)
@@ -193,6 +207,11 @@ class Viewer(QtWidgets.QMainWindow):
             if str(d.item_nbr) == nbr:
                 self.items.pop(i)
                 break
+        self.refreshScene()
+
+    def refreshScene(self):
+        self.scene.clear()
+        self.scene.addPixmap(self.pixmap)
         self.scene.clear()
         self.scene.addPixmap(self.pixmap)
         self.table.setRowCount(0)
