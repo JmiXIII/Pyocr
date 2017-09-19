@@ -1,10 +1,13 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PIL import Image
 from pytesseract import *
-import cv2
-import numpy as np
+# import os
+# import cv2
+# import numpy as np
+#
+
+import xlwings as xw
 import pytesseract
-import pickle
 
 '''
 https://stackoverflow.com/questions/12249875/mousepressevent-position-offset-in-qgraphicsview
@@ -92,7 +95,6 @@ class Scene(QtWidgets.QGraphicsScene):
         self.currentQRect = self.currentQRubberBand.geometry()
         self.currentQRect = QtCore.QRect(self.originCropPoint.toPoint(), event.scenePos().toPoint())
         #print(self.currentQRect)
-
         self.mouseReleased.emit()
 
         # self.cropPixmap = self.pixmap.copy(currentQRect)
@@ -123,6 +125,9 @@ class MyTableWidget(QtWidgets.QTableWidget):
          else:
              super(MyTableWidget, self).keyPressEvent(event)
 
+    def MouseDoubleClickEvent(self,event):
+        self.mouseDoubleClickEvent(self, event)
+
 class Item:
     def __init__(self, item_nbr, crop_pixmap, originepoint, designation, image):
         self.item_nbr = item_nbr            # integer
@@ -146,14 +151,20 @@ class Viewer(QtWidgets.QMainWindow):
         self.scene = Scene(self)
         self.table = MyTableWidget(0,5)
         self.table.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
+        self.photo = QtWidgets.QLabel()
         # self.table.setHorizontalHeaderItem(0,QtWidgets.QTableWidgetItem('#'))
         self.table.setHorizontalHeaderLabels(("#;Type;CC;Requirement;Image").split(";"))
         self.splitter = QtWidgets.QSplitter()
+        self.splitter2 = QtWidgets.QSplitter()
+        self.splitter2.addWidget(self.table)
+        self.splitter2.addWidget(self.photo)
         self.splitter.setOrientation(QtCore.Qt.Vertical)
         self.splitter.addWidget(self.graphicsView)
-        self.splitter.addWidget(self.table)
+        self.splitter.addWidget(self.splitter2)
+        #self.splitter.addWidget(self.table)
 
         self.table.returnPressed.connect(self.modifyItem)
+        self.table.cellClicked.connect(self.viewPhoto)
         self.scene.mouseReleased.connect(self.mReleasedAct)
 
         #self.hbox.addWidget(self.graphicsView)
@@ -205,7 +216,7 @@ class Viewer(QtWidgets.QMainWindow):
     def mReleasedAct(self):
         # Handle Table feeding
         self.cropPixmap = self.pixmap.copy(self.scene.currentQRect)
-        size = self.cropPixmap.size() / 2
+        size = self.cropPixmap.size() * 2
         self.cropPixmap = self.cropPixmap.scaled(size, QtCore.Qt.KeepAspectRatio,
                                                  transformMode=QtCore.Qt.SmoothTransformation)
         self.item = Item(self.defineItemNbr(), self.cropPixmap, self.scene.originCropPoint, 'Test',None)
@@ -216,7 +227,6 @@ class Viewer(QtWidgets.QMainWindow):
         self.cropPixmap.save('output.png')
         path = QtCore.QDir.currentPath()+r'output.png'
         get_string(path)
-        self.hasFocus()
 
     def defineItemNbr(self):
         l = [0]
@@ -247,17 +257,26 @@ class Viewer(QtWidgets.QMainWindow):
         print(text)
         self.scene.addEllipse(x, y, 30, 30, pen=stylo)
 
+
     def add_item(self, item):
+
+        # Ajout sur le tableau
         self.table.insertRow(0)
         imgWidget = ImgWidget(item.crop_pixmap)
         nbrWidget = QtWidgets.QTableWidgetItem(str(item.item_nbr))
         desWidget = QtWidgets.QTableWidgetItem(item.designation)
         desWidget.setData(QtCore.Qt.UserRole,0)
-        self.table.setCellWidget(0,4,imgWidget)
+        # self.table.setCellWidget(0,4,imgWidget)
         self.table.setItem(0,0,nbrWidget)
         self.table.setItem(0,2,desWidget)
+        # Mise à jour du graphique
         self.ballonItem(item)
-        self.update()
+        # Mise à jour de la capture
+        self.add_photo(item.crop_pixmap)
+        # self.update()
+
+    def add_photo(self,photo):
+        self.photo.setPixmap(photo)
 
     def removeItem(self):
         row = self.table.currentRow()
@@ -279,7 +298,6 @@ class Viewer(QtWidgets.QMainWindow):
         print(nbr,prenbr)
         self.refreshScene()
 
-
     def refreshScene(self):
         self.scene.clear()
         self.scene.addPixmap(self.pixmap)
@@ -291,6 +309,16 @@ class Viewer(QtWidgets.QMainWindow):
         items = self.items
         print(items)
         pass
+
+    def viewPhoto(self):
+        row = self.table.currentRow()
+        nbr = self.table.item(row, 0).text()
+        for i,item in enumerate(self.items):
+            if str(item.item_nbr) == nbr:
+                self.photo.setPixmap(item.crop_pixmap)
+                print(nbr, 'done')
+                break
+
 
     def open_picture(self):
         fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File",
@@ -327,7 +355,7 @@ class Viewer(QtWidgets.QMainWindow):
     def readSettings(self):
         self.items = []
         fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File",
-                                                            QtCore.QDir.currentPath(),"hpo (*.hpo)",".hpo")
+                                                            QtCore.QDir.currentPath(),"hpo (*.hpo)","hpo")
         if not fileName:
             return
         settings = QtCore.QSettings(fileName, QtCore.QSettings.IniFormat)
@@ -379,8 +407,14 @@ class Viewer(QtWidgets.QMainWindow):
         pdf_writer = QtGui.QPdfWriter(filename)
         painter = QtGui.QPainter()
         painter.begin(pdf_writer)
-        self.graphicsView.render(painter)
+        self.scene.render(painter)
         painter.end()
+
+        wb = xw.Book()
+        for l, item in enumerate(self.items):
+            print(item.item_nbr)
+            xw.Range('A'+str(l+1)).value = item.item_nbr
+            xw.Range('B'+str(l+1)).value = item.designation
 
 
 if __name__ == '__main__':
