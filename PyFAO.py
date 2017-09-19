@@ -10,7 +10,13 @@ import pickle
 https://stackoverflow.com/questions/12249875/mousepressevent-position-offset-in-qgraphicsview
 '''
 
+def run_tesseract(cmd_args):
+    return pysubprocess.run(["C:\\Program Files (x86)\\Tesseract-OCR\\tesseract", "--oem 2"], stdout=subprocess.PIPE).stdout
+
 def get_string(img_path):
+    # Windows Tesseract
+    pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files (x86)\\Tesseract-OCR\\tesseract'
+
     # # Read image with opencv
     # print('----------')
     # img = cv2.imread(img_path)
@@ -101,6 +107,22 @@ class ImgWidget(QtWidgets.QLabel):
         self.pic = pic
         self.setPixmap(self.pic)
 
+class MyTableWidget(QtWidgets.QTableWidget):
+
+    returnPressed = QtCore.pyqtSignal()
+
+    def __init__(self, row, col, parent = None):
+        super(MyTableWidget, self).__init__(row,col)
+
+    def keyPressEvent(self, event):
+         key = event.key()
+
+         if key == QtCore.Qt.Key_Return or key == QtCore.Qt.Key_Enter:
+             self.currentItem().text()
+             self.returnPressed.emit()
+         else:
+             super(MyTableWidget, self).keyPressEvent(event)
+
 class Item:
     def __init__(self, item_nbr, crop_pixmap, originepoint, designation, image):
         self.item_nbr = item_nbr            # integer
@@ -122,7 +144,7 @@ class Viewer(QtWidgets.QMainWindow):
         self.graphicsView.setRenderHint(QtGui.QPainter.Antialiasing)
         self.hbox = QtWidgets.QVBoxLayout()
         self.scene = Scene(self)
-        self.table = QtWidgets.QTableWidget(0, 5)
+        self.table = MyTableWidget(0,5)
         self.table.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
         # self.table.setHorizontalHeaderItem(0,QtWidgets.QTableWidgetItem('#'))
         self.table.setHorizontalHeaderLabels(("#;Type;CC;Requirement;Image").split(";"))
@@ -131,6 +153,7 @@ class Viewer(QtWidgets.QMainWindow):
         self.splitter.addWidget(self.graphicsView)
         self.splitter.addWidget(self.table)
 
+        self.table.returnPressed.connect(self.modifyItem)
         self.scene.mouseReleased.connect(self.mReleasedAct)
 
         #self.hbox.addWidget(self.graphicsView)
@@ -226,9 +249,13 @@ class Viewer(QtWidgets.QMainWindow):
 
     def add_item(self, item):
         self.table.insertRow(0)
-        self.table.setCellWidget(0,4,ImgWidget(item.crop_pixmap))
-        self.table.setItem(0,0,QtWidgets.QTableWidgetItem(str(item.item_nbr)))
-        self.table.setItem(0,2,QtWidgets.QTableWidgetItem(item.designation))
+        imgWidget = ImgWidget(item.crop_pixmap)
+        nbrWidget = QtWidgets.QTableWidgetItem(str(item.item_nbr))
+        desWidget = QtWidgets.QTableWidgetItem(item.designation)
+        desWidget.setData(QtCore.Qt.UserRole,0)
+        self.table.setCellWidget(0,4,imgWidget)
+        self.table.setItem(0,0,nbrWidget)
+        self.table.setItem(0,2,desWidget)
         self.ballonItem(item)
         self.update()
 
@@ -240,6 +267,18 @@ class Viewer(QtWidgets.QMainWindow):
                 self.items.pop(i)
                 break
         self.refreshScene()
+
+    def modifyItem(self):
+        prenbr = self.table.currentItem().text()
+        QtGui.QGuiApplication.processEvents()
+        nbr = self.table.currentItem().text()
+        for i, d in enumerate(self.items):
+            if str(d.item_nbr) == prenbr:
+                d.item_nbr = nbr
+                break
+        print(nbr,prenbr)
+        self.refreshScene()
+
 
     def refreshScene(self):
         self.scene.clear()
