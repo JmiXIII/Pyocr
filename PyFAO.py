@@ -1,10 +1,9 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PIL import Image
-from pytesseract import *
-# import os
-# import cv2
-# import numpy as np
-#
+import os
+import cv2
+import numpy as np
+
 
 import xlwings as xw
 import pytesseract
@@ -22,32 +21,32 @@ def get_string(img_path):
 
     # # Read image with opencv
     # print('----------')
-    # img = cv2.imread(img_path)
+    img = cv2.imread(img_path)
     #
     # # Convert to gray
-    # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    #
-    # # Apply dilation and erosion to remove some noise
+#    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Apply dilation and erosion to remove some noise
     # kernel = np.ones((1, 1), np.uint8)
     # img = cv2.dilate(img, kernel, iterations=1)
     # img = cv2.erode(img, kernel, iterations=1)
-    #
-    # # Write image after removed noise
-    # cv2.imwrite("removed_noise.png", img)
-    #
-    # #  Apply threshold to get image with only black and white
-    # # img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2)
-    #
-    # # Write the image after apply opencv to do some ...
-    # cv2.imwrite("thres.png", img)
-    #
+
+    # Write image after removed noise
+    #cv2.imwrite("removed_noise.png", img)
+
+    #  Apply threshold to get image with only black and white
+    # img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2)
+
+    # Write the image after apply opencv to do some ...
+    #cv2.imwrite("output.png", img)
+
     # # Recognize text with tesseract for python
     result = pytesseract.image_to_string(Image.open("output.png"))
 
     # Remove template file
     # os.remove(temp)
 
-    print(result)
+    return result
 
 
 class View(QtWidgets.QGraphicsView):
@@ -129,6 +128,13 @@ class MyTableWidget(QtWidgets.QTableWidget):
         self.mouseDoubleClickEvent(self, event)
 
 class Item:
+    "Create DWG item object"
+    position = ['item_nbr',
+                     'designation',
+                     'crop_pixmap',
+                     'origin_point',
+                     'image']
+
     def __init__(self, item_nbr, crop_pixmap, originepoint, designation, image):
         self.item_nbr = item_nbr            # integer
         self.crop_pixmap = crop_pixmap      # QPixmap
@@ -153,7 +159,7 @@ class Viewer(QtWidgets.QMainWindow):
         self.table.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
         self.photo = QtWidgets.QLabel()
         # self.table.setHorizontalHeaderItem(0,QtWidgets.QTableWidgetItem('#'))
-        self.table.setHorizontalHeaderLabels(("#;Type;CC;Requirement;Image").split(";"))
+        self.table.setHorizontalHeaderLabels(Item.position)
         self.splitter = QtWidgets.QSplitter()
         self.splitter2 = QtWidgets.QSplitter()
         self.splitter2.addWidget(self.table)
@@ -219,14 +225,16 @@ class Viewer(QtWidgets.QMainWindow):
         size = self.cropPixmap.size() * 2
         self.cropPixmap = self.cropPixmap.scaled(size, QtCore.Qt.KeepAspectRatio,
                                                  transformMode=QtCore.Qt.SmoothTransformation)
-        self.item = Item(self.defineItemNbr(), self.cropPixmap, self.scene.originCropPoint, 'Test',None)
+        self.cropPixmap.save('output.png')
+        path = QtCore.QDir.currentPath()+r'output.png'
+        txt = get_string(path)
+        print(txt)
+        self.item = Item(self.defineItemNbr(), self.cropPixmap, self.scene.originCropPoint, txt,None)
         if self.item.item_nbr ==1:
             self.image = self.pixmap
         self.items.append(self.item)
         self.add_item(self.item)
-        self.cropPixmap.save('output.png')
-        path = QtCore.QDir.currentPath()+r'output.png'
-        get_string(path)
+
 
     def defineItemNbr(self):
         l = [0]
@@ -267,15 +275,15 @@ class Viewer(QtWidgets.QMainWindow):
         desWidget = QtWidgets.QTableWidgetItem(item.designation)
         desWidget.setData(QtCore.Qt.UserRole,0)
         # self.table.setCellWidget(0,4,imgWidget)
-        self.table.setItem(0,0,nbrWidget)
-        self.table.setItem(0,2,desWidget)
+        self.table.setItem(0,item.position.index('item_nbr'),nbrWidget)
+        self.table.setItem(0,item.position.index('designation'),desWidget)
         # Mise à jour du graphique
         self.ballonItem(item)
         # Mise à jour de la capture
         self.add_photo(item.crop_pixmap)
         # self.update()
 
-    def add_photo(self,photo):
+    def add_photo(self, photo):
         self.photo.setPixmap(photo)
 
     def removeItem(self):
@@ -288,14 +296,19 @@ class Viewer(QtWidgets.QMainWindow):
         self.refreshScene()
 
     def modifyItem(self):
-        prenbr = self.table.currentItem().text()
+        before = self.table.currentItem().text()
+        row = self.table.currentRow()
+        col = self.table.currentColumn()
+        attribut = Item.position[col]
+        key = self.table.item(row,0).text()
+        print("avant :",before)
         QtGui.QGuiApplication.processEvents()
-        nbr = self.table.currentItem().text()
+        after = self.table.currentItem().text()
+        print('après :',after)
         for i, d in enumerate(self.items):
-            if str(d.item_nbr) == prenbr:
-                d.item_nbr = nbr
+            if str(d.item_nbr) == key:
+                setattr(d,attribut,after)
                 break
-        print(nbr,prenbr)
         self.refreshScene()
 
     def refreshScene(self):
@@ -361,13 +374,20 @@ class Viewer(QtWidgets.QMainWindow):
         settings = QtCore.QSettings(fileName, QtCore.QSettings.IniFormat)
         for index in range(settings.beginReadArray('items')):
             settings.setArrayIndex(index)
-            self.items.append(Item(
-                settings.value('number', -1, int),
-                settings.value('pixmap', None, QtGui.QPixmap),
-                settings.value('point', None, QtCore.QPoint),
-                settings.value('designation', '', str),
-                settings.value('image',None, QtGui.QPixmap),
-                ))
+            item = Item(None, None, None, None, None)
+            for key in Item.position:
+                print(key)
+                setattr(item,str(key),settings.value(str(key)))
+            self.items.append(item)
+        print(self.items)
+
+            #self.items.append(Item(settings.value(str(key))))
+                    # settings.value('number', -1, int),
+                    # settings.value('pixmap', None, QtGui.QPixmap),
+                    # settings.value('point', None, QtCore.QPoint),
+                    # settings.value('designation', '', str),
+                    # settings.value('image',None, QtGui.QPixmap),
+
         self.initSettings(self.items)
 
     def initSettings(self, items):
@@ -389,10 +409,9 @@ class Viewer(QtWidgets.QMainWindow):
         settings.beginWriteArray('items')
         for index, item in enumerate(self.items):
             settings.setArrayIndex(index)
-            settings.setValue('number', item.item_nbr)
-            settings.setValue('pixmap', item.crop_pixmap)
-            settings.setValue('point', item.origin_point)
-            settings.setValue('designation', item.designation)
+            for key in Item.position:
+                attribut = getattr(item,key)
+                settings.setValue(str(key), attribut)
             if item.item_nbr == 1:
                 settings.setValue('image', self.pixmap)
             else:
