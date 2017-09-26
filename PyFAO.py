@@ -8,6 +8,9 @@ import numpy as np
 import xlwings as xw
 import pytesseract
 
+
+
+
 '''
 https://stackoverflow.com/questions/12249875/mousepressevent-position-offset-in-qgraphicsview
 '''
@@ -131,11 +134,11 @@ class Item:
     "Create DWG item object"
     position = ['item_nbr',
                      'designation',
-                     'crop_pixmap',
                      'origin_point',
+                     'crop_pixmap',
                      'image']
 
-    def __init__(self, item_nbr, crop_pixmap, originepoint, designation, image):
+    def __init__(self, item_nbr=None, crop_pixmap=None, originepoint=None, designation=None, image=None):
         self.item_nbr = item_nbr            # integer
         self.crop_pixmap = crop_pixmap      # QPixmap
         self.origin_point = originepoint    # QPoint
@@ -239,7 +242,7 @@ class Viewer(QtWidgets.QMainWindow):
     def defineItemNbr(self):
         l = [0]
         for i, d in enumerate(self.items):
-            l.append(d.item_nbr)
+            l.append(int(d.item_nbr))
         itemNbr = max(l)+1
         return(itemNbr)
 
