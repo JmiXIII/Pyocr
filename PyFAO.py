@@ -1,15 +1,12 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PIL import Image
+from wand.image import Image as Img
 import os
 import cv2
 import numpy as np
 
-
 import xlwings as xw
 import pytesseract
-
-
-
 
 '''
 https://stackoverflow.com/questions/12249875/mousepressevent-position-offset-in-qgraphicsview
@@ -200,16 +197,15 @@ class Viewer(QtWidgets.QMainWindow):
         self.removeItemAct = QtWidgets.QAction("&Remove Item",self, triggered=self.removeItem)
         self.sortItemNbrAct = QtWidgets.QAction("&Renuméroter",self, triggered=self.sortItemNbr)
 
-        # self.fitAct = QtWidgets.QAction("&Resize...", self, shortcut="Ctrl+F",
-        #                                 triggered=self.fit)
-        # self.ogSizeAct = QtWidgets.QAction("&Original size ...", self, shortcut="ctrl+G",
-        #                                    triggered=self.ogSize)
+        self.importPdfAct = QtWidgets.QAction("&Importer une image...", self, shortcut="Ctrl+P",
+                                         triggered=self.importPdf)
 
 
     def createMenus(self):
         self.fileMenu = QtWidgets.QMenu("&File", self)
         self.fileMenu.addAction(self.openAct)
         self.fileMenu.addAction(self.openProjAct)
+        self.fileMenu.addAction(self.importPdfAct)
         self.fileMenu.addAction(self.saveAct)
         self.fileMenu.addAction(self.exportDwgAct)
 
@@ -237,7 +233,6 @@ class Viewer(QtWidgets.QMainWindow):
             self.image = self.pixmap
         self.items.append(self.item)
         self.add_item(self.item)
-
 
     def defineItemNbr(self):
         l = [0]
@@ -267,7 +262,6 @@ class Viewer(QtWidgets.QMainWindow):
         self.scene.addItem(text)
         print(text)
         self.scene.addEllipse(x, y, 30, 30, pen=stylo)
-
 
     def add_item(self, item):
 
@@ -335,7 +329,6 @@ class Viewer(QtWidgets.QMainWindow):
                 print(nbr, 'done')
                 break
 
-
     def open_picture(self):
         fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File",
                                                             QtCore.QDir.currentPath())
@@ -359,6 +352,18 @@ class Viewer(QtWidgets.QMainWindow):
             # fits the picture within the scene -
             # self.rect = self.graphicsView.sceneRect()
             # self.graphicsView.fitInView(self.rect, QtCore.Qt.KeepAspectRatio)
+
+    def importPdf(self):
+        filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File",
+                                                            QtCore.QDir.currentPath())
+        print(filename)
+        if not filename:
+            print('error')
+            return
+        with Img(filename=filename, resolution=300) as image:
+            image.compression_quality = 100
+            image.save(filename='file.png')
+            self.open_picture()
 
     def settings(self):
         # use a custom location
@@ -401,7 +406,6 @@ class Viewer(QtWidgets.QMainWindow):
         self.graphicsView.show()  # show the scene
         for item in items:
             self.add_item(item)
-
 
     def writeSettings(self):
         fileName, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save File",
