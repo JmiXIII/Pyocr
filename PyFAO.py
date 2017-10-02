@@ -1,6 +1,8 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PIL import Image
 from wand.image import Image as Img
+import subprocess
+from wand.color import Color
 import os
 import cv2
 import numpy as np
@@ -221,9 +223,10 @@ class Viewer(QtWidgets.QMainWindow):
     def mReleasedAct(self):
         # Handle Table feeding
         self.cropPixmap = self.pixmap.copy(self.scene.currentQRect)
-        size = self.cropPixmap.size() * 2
-        self.cropPixmap = self.cropPixmap.scaled(size, QtCore.Qt.KeepAspectRatio,
-                                                 transformMode=QtCore.Qt.SmoothTransformation)
+        self.cropPixmap = self.cropPixmap.scaledToHeight(50, QtCore.Qt.SmoothTransformation)
+        # size = self.cropPixmap.size()
+        # self.cropPixmap = self.cropPixmap.scaled(300, QtCore.Qt.KeepAspectRatio,
+        #                                          transformMode=QtCore.Qt.SmoothTransformation)
         self.cropPixmap.save('output.png')
         path = QtCore.QDir.currentPath()+r'output.png'
         txt = get_string(path)
@@ -360,10 +363,21 @@ class Viewer(QtWidgets.QMainWindow):
         if not filename:
             print('error')
             return
-        with Img(filename=filename, resolution=300) as image:
-            image.compression_quality = 100
-            image.save(filename='file.png')
-            self.open_picture()
+        command = "convert" + " " + filename
+        args = " -units PixelsPerInch -density 20x20 -background white -flatten converted_pdf2.jpg"
+        cmd = "convert -units PixelsPerInch -density 300 -background white -flatten " + filename + " converted_pdf.jpg"
+        print(cmd)
+        os.system(cmd)
+        # subprocess.run([command, args],
+        #                  stdout=subprocess.PIPE)
+        # with Img(filename=filename,format='jpeg', resolution=300) as image:
+        #     image.compression_quality = 99
+        #     image.background_color=Color('White')
+        #     image.alpha_channel = True
+        #     image.save(filename='file.jpeg')
+        self.open_picture()
+
+
 
     def settings(self):
         # use a custom location
