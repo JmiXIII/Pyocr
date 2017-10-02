@@ -1,53 +1,19 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PIL import Image
-from wand.image import Image as Img
 import subprocess
-from wand.color import Color
 import os
 import cv2
-import numpy as np
 
 import xlwings as xw
 import pytesseract
 
-'''
-https://stackoverflow.com/questions/12249875/mousepressevent-position-offset-in-qgraphicsview
-'''
-
-def run_tesseract(cmd_args):
-    return pysubprocess.run(["C:\\Program Files (x86)\\Tesseract-OCR\\tesseract", "--oem 2"], stdout=subprocess.PIPE).stdout
 
 def get_string(img_path):
-    # Windows Tesseract
     pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files (x86)\\Tesseract-OCR\\tesseract'
-
-    # # Read image with opencv
-    # print('----------')
     img = cv2.imread(img_path)
-    #
-    # # Convert to gray
-#    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # Apply dilation and erosion to remove some noise
-    # kernel = np.ones((1, 1), np.uint8)
-    # img = cv2.dilate(img, kernel, iterations=1)
-    # img = cv2.erode(img, kernel, iterations=1)
-
-    # Write image after removed noise
-    #cv2.imwrite("removed_noise.png", img)
-
-    #  Apply threshold to get image with only black and white
-    # img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2)
-
-    # Write the image after apply opencv to do some ...
-    #cv2.imwrite("output.png", img)
-
-    # # Recognize text with tesseract for python
     result = pytesseract.image_to_string(Image.open("output.png"))
-
     # Remove template file
     # os.remove(temp)
-
     return result
 
 
@@ -244,6 +210,20 @@ class Viewer(QtWidgets.QMainWindow):
         itemNbr = max(l)+1
         return(itemNbr)
 
+    def searchKeyItem(self, nbr):
+        for i, d in enumerate(self.items):
+            if str(d.item_nbr) == nbr:
+                key = i
+                break
+        return key
+
+    def searchItemAttribut(self, nbr):
+        for i, item in enumerate(self.items):
+            if str(item.item_nbr) == nbr:
+                key = item
+                break
+        return item
+
     def sortItemNbr(self):
         for i,item in enumerate(self.items):
             item.item_nbr = i+1
@@ -289,10 +269,8 @@ class Viewer(QtWidgets.QMainWindow):
     def removeItem(self):
         row = self.table.currentRow()
         nbr = self.table.item(row, 0).text()
-        for i, d in enumerate(self.items):
-            if str(d.item_nbr) == nbr:
-                self.items.pop(i)
-                break
+        key = self.searchKeyItem(nbr)
+        self.items.pop(key)
         self.refreshScene()
 
     def modifyItem(self):
@@ -300,15 +278,13 @@ class Viewer(QtWidgets.QMainWindow):
         row = self.table.currentRow()
         col = self.table.currentColumn()
         attribut = Item.position[col]
-        key = self.table.item(row,0).text()
+        nbr = self.table.item(row,0).text()
         print("avant :",before)
         QtGui.QGuiApplication.processEvents()
         after = self.table.currentItem().text()
         print('après :',after)
-        for i, d in enumerate(self.items):
-            if str(d.item_nbr) == key:
-                setattr(d,attribut,after)
-                break
+        item = self.searchItemAttribut(nbr)
+        setattr(item,attribut,after)
         self.refreshScene()
 
     def refreshScene(self):
