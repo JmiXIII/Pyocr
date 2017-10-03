@@ -1,21 +1,18 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PIL import Image
-import subprocess
 import os
-import cv2
-
 import xlwings as xw
 import pytesseract
 
 
 def get_string(img_path):
-    pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files (x86)\\Tesseract-OCR\\tesseract'
-    img = cv2.imread(img_path)
+    pytesseract.pytesseract.tesseract_cmd = './Tesseract-OCR/tesseract'
     result = pytesseract.image_to_string(Image.open("output.png"))
-    # Remove template file
-    # os.remove(temp)
     return result
 
+###
+# https://stackoverflow.com/questions/35508711/how-to-enable-pan-and-zoom-in-a-qgraphicsview
+###
 
 class View(QtWidgets.QGraphicsView):
 
@@ -285,6 +282,7 @@ class Viewer(QtWidgets.QMainWindow):
         print('après :',after)
         item = self.searchItemAttribut(nbr)
         setattr(item,attribut,after)
+        # self.graphicsView.scale(2,2)
         self.refreshScene()
 
     def refreshScene(self):
@@ -312,46 +310,40 @@ class Viewer(QtWidgets.QMainWindow):
         fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File",
                                                             QtCore.QDir.currentPath())
         if fileName:
-            self.image = QtGui.QImage(fileName)
-            if self.image.isNull():
+            self.image2 = \
+                QtGui.QImage(fileName)
+            if self.image2.isNull():
                 QtWidgets.QMessageBox.information(self, "Image Viewer",
                                                   "Cannot load %s." % fileName)
                 return
-
-            self.scene.clear()                                  # clear graphics scene
-            self.pixmap = QtGui.QPixmap.fromImage(self.image)
-
-            # important for centering the picture within the scene
-            self.scene.setSceneRect(0, 0, self.pixmap.width(), self.pixmap.height())
-
-            self.scene.addPixmap(self.pixmap)                  # assign picture to the scene
-            self.graphicsView.setScene(self.scene)             # assign scene to a view
-            self.graphicsView.show()                           # show the scene
+        self.displayPicture(fileName)
 
             # fits the picture within the scene -
             # self.rect = self.graphicsView.sceneRect()
             # self.graphicsView.fitInView(self.rect, QtCore.Qt.KeepAspectRatio)
 
+    def displayPicture(self, fileName):
+        self.image = QtGui.QImage(fileName)
+        self.image = self.image.scaledToWidth(4500, QtCore.Qt.SmoothTransformation)
+        self.scene.clear()                              # clear graphics scene
+        self.pixmap = QtGui.QPixmap.fromImage(self.image)
+        # important for centering the picture within the scene
+        self.scene.setSceneRect(0, 0, self.pixmap.width(), self.pixmap.height())
+        self.scene.addPixmap(self.pixmap)               # assign picture to the scene
+        self.graphicsView.setScene(self.scene)          # assign scene to a view
+        self.graphicsView.show()                        # show the scene
+
     def importPdf(self):
-        filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File",
+        fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File",
                                                             QtCore.QDir.currentPath())
-        print(filename)
-        if not filename:
+        print(fileName)
+        if not fileName:
             print('error')
             return
-        command = "convert" + " " + filename
-        args = " -units PixelsPerInch -density 20x20 -background white -flatten converted_pdf2.jpg"
-        cmd = "convert -units PixelsPerInch -density 300 -background white -flatten " + filename + " converted_pdf.jpg"
+        cmd = "convert -units PixelsPerInch -density 300 -background white -flatten " + fileName + " converted_pdf.jpg"
         print(cmd)
         os.system(cmd)
-        # subprocess.run([command, args],
-        #                  stdout=subprocess.PIPE)
-        # with Img(filename=filename,format='jpeg', resolution=300) as image:
-        #     image.compression_quality = 99
-        #     image.background_color=Color('White')
-        #     image.alpha_channel = True
-        #     image.save(filename='file.jpeg')
-        self.open_picture()
+        self.displayPicture('converted_pdf.jpg')
 
 
 
