@@ -340,7 +340,8 @@ class Viewer(QtWidgets.QMainWindow):
         if not fileName:
             print('error')
             return
-        cmd = "convert -units PixelsPerInch -density 300 -background white -flatten " + fileName + " converted_pdf.jpg"
+        cwd = os.getcwd()
+        cmd = cwd + "/ImageMagick/convert.exe -units PixelsPerInch -density 300 -background white -flatten " + fileName + " converted_pdf.jpg"
         print(cmd)
         os.system(cmd)
         self.displayPicture('converted_pdf.jpg')
