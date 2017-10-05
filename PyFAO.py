@@ -17,22 +17,24 @@ def get_string(img_path):
 class View(QtWidgets.QGraphicsView):
 
     mouseReleased = QtCore.pyqtSignal()
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super(View, self).__init__(parent)
 
-    def mousePressEvent(self, event):
-        self.originQPoint = event.pos()
-        self.currentQRubberBand = QtWidgets.QRubberBand(QtWidgets.QRubberBand.Rectangle)
+    #    self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
 
-    def mouseMoveEvent(self, event):
-        self.currentQRubberBand.setGeometry(QtCore.QRect(self.originQPoint, event.pos()).normalized())
-        self.currentQRubberBand.show()
+    def wheelEvent(self, event):
+        self.zoom(event.angleDelta().y()/100)
 
-    def mouseReleaseEvent(self, event):
-        self.currentQRubberBand.hide()
-        self.currentQRect = self.currentQRubberBand.geometry()
-        print(self.currentQRect)
-        self.mouseReleased.emit()
+    def zoom(self,factor):
+        if factor < 0.0 :
+            factor = -1.0 / factor
+        self.scale(factor,factor)
+
+    def keyPressEvent(self, event):
+        print('event ok')
+        if event.key() == QtCore.Qt.Key_F11 or event.key() == QtCore.Qt.Key_F:
+            self.zoom += 1
+            self.scale(self.zoom, self.zoom)
 
 class Scene(QtWidgets.QGraphicsScene):
 
@@ -52,7 +54,6 @@ class Scene(QtWidgets.QGraphicsScene):
         self.currentQRubberBand.setGeometry(QtCore.QRect(self.originQPoint, event.screenPos()))
         self.currentQRubberBand.show()
 
-
     def mouseReleaseEvent(self, event):
         self.currentQRubberBand.deleteLater()
         self.currentQRubberBand.hide()
@@ -65,6 +66,7 @@ class Scene(QtWidgets.QGraphicsScene):
         # size = self.cropPixmap.size()/2
         # print(size)
         #self.cropPixmap = self.cropPixmap.scaled(size, QtCore.Qt.KeepAspectRatio,
+
 
 class ImgWidget(QtWidgets.QLabel):
 
@@ -94,14 +96,28 @@ class MyTableWidget(QtWidgets.QTableWidget):
 
 class Item:
     "Create DWG item object"
-    position = ['item_nbr',
-                     'designation',
-                     'origin_point',
-                     'crop_pixmap',
-                     'image']
+    position = [
+                'item_nbr',
+                'designation',
+                'itemType',
+                'minValue',
+                'maxValue',
+                'origin_point',
+                'crop_pixmap',
+                'image'
+                ]
 
-    def __init__(self, item_nbr=None, crop_pixmap=None, originepoint=None, designation=None, image=None):
+    def __init__(self, item_nbr=None, crop_pixmap=None, originepoint=None, designation=None, image=None,
+                 itemType=None, minValue=None, maxValue=None):
         self.item_nbr = item_nbr            # integer
+        self.itemType = itemType
+        self.minValue = minValue
+        self.maxValue = maxValue
+        '''
+        liste de choix (linéaire, diamètre, rayon, GPS, Angle, rugosité, propreté
+        
+        '''
+
         self.crop_pixmap = crop_pixmap      # QPixmap
         self.origin_point = originepoint    # QPoint
         self.designation = designation      # str
@@ -116,7 +132,7 @@ class Viewer(QtWidgets.QMainWindow):
 
         # UI setup
         self.setGeometry(200,200,800,600)
-        self.graphicsView = QtWidgets.QGraphicsView()
+        self.graphicsView = View()
         self.graphicsView.setRenderHint(QtGui.QPainter.Antialiasing)
         self.hbox = QtWidgets.QVBoxLayout()
         self.scene = Scene(self)
@@ -149,27 +165,27 @@ class Viewer(QtWidgets.QMainWindow):
 
     def createActions(self):
         # noinspection PyArgumentList
-        self.openAct = QtWidgets.QAction("&Importer une image...", self, shortcut="Ctrl+I",
-                                         triggered=self.open_picture)
-        self.openProjAct = QtWidgets.QAction('&Ouvrir le projet...', self, shortcut="Ctrl+O",
+        self.openProjAct = QtWidgets.QAction('&Ouvrir un projet ...', self, shortcut="Ctrl+O",
                                                triggered=self.readSettings)
+        self.importImageAct = QtWidgets.QAction("&Importer une image ...", self, shortcut="Ctrl+I",
+                                                triggered=self.open_picture)
+        self.importPdfAct = QtWidgets.QAction("&Importer un PDF ...", self, shortcut="Ctrl+P",
+                                         triggered=self.importPdf)
         self.saveAct = QtWidgets.QAction("&Sauver le Projet sous ...", self, shortcut="Ctrl+S",
                                          triggered=self.save_file)
-        self.exportDwgAct = QtWidgets.QAction('Exporter en image PDF...', self, shortcut="Ctrl+D",
+        self.exportDwgAct = QtWidgets.QAction('Exporter en image PDF ...', self, shortcut="Ctrl+D",
                                                triggered=self.exportDWG)
-        self.listAct = QtWidgets.QAction("&Lister les items du plan", self, shortcut="Ctrl+L",
+        self.listAct = QtWidgets.QAction("&Lister les items du plan ...", self, shortcut="Ctrl+L",
                                             triggered=self.listItems)
+
+
         self.removeItemAct = QtWidgets.QAction("&Remove Item",self, triggered=self.removeItem)
         self.sortItemNbrAct = QtWidgets.QAction("&Renuméroter",self, triggered=self.sortItemNbr)
 
-        self.importPdfAct = QtWidgets.QAction("&Importer une image...", self, shortcut="Ctrl+P",
-                                         triggered=self.importPdf)
-
-
     def createMenus(self):
         self.fileMenu = QtWidgets.QMenu("&File", self)
-        self.fileMenu.addAction(self.openAct)
         self.fileMenu.addAction(self.openProjAct)
+        self.fileMenu.addAction(self.importImageAct)
         self.fileMenu.addAction(self.importPdfAct)
         self.fileMenu.addAction(self.saveAct)
         self.fileMenu.addAction(self.exportDwgAct)
@@ -341,7 +357,7 @@ class Viewer(QtWidgets.QMainWindow):
             print('error')
             return
         cwd = os.getcwd()
-        cmd = cwd + "/ImageMagick/convert.exe -units PixelsPerInch -density 300 -background white -flatten " + fileName + " converted_pdf.jpg"
+        cmd = cwd + "/ImageMagick/convert.exe -units PixelsPerInch -density 300 -background white -flatten " + '"'+fileName + '"'+" converted_pdf.jpg"
         print(cmd)
         os.system(cmd)
         self.displayPicture('converted_pdf.jpg')
@@ -414,6 +430,7 @@ class Viewer(QtWidgets.QMainWindow):
     def exportDWG(self):
         filename, _ = QtWidgets.QFileDialog.getSaveFileName(self,"export PDF",".pdf", "pdf (*.pdf)","pdf")
         pdf_writer = QtGui.QPdfWriter(filename)
+        pdf_writer.setPageOrientation(QtGui.QPageLayout.Landscape)
         painter = QtGui.QPainter()
         painter.begin(pdf_writer)
         self.scene.render(painter)
