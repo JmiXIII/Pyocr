@@ -100,29 +100,17 @@ class Item:
                 'item_nbr',
                 'designation',
                 'itemType',
+                'nominalValue',
                 'minValue',
                 'maxValue',
                 'origin_point',
-                'crop_pixmap',
+                'cropPixmap',
                 'image'
                 ]
 
-    def __init__(self, item_nbr=None, crop_pixmap=None, originepoint=None, designation=None, image=None,
-                 itemType=None, minValue=None, maxValue=None):
-        self.item_nbr = item_nbr            # integer
-        self.itemType = itemType
-        self.minValue = minValue
-        self.maxValue = maxValue
-        '''
-        liste de choix (linéaire, diamètre, rayon, GPS, Angle, rugosité, propreté
-        
-        '''
-
-        self.crop_pixmap = crop_pixmap      # QPixmap
-        self.origin_point = originepoint    # QPoint
-        self.designation = designation      # str
-        self.image = image                  # image only for item 1
-
+    def __init__(self, **kwargs):
+        for key in Item.position:
+            setattr(self, key, kwargs.get(key, None))
 
 class Viewer(QtWidgets.QMainWindow):
     def __init__(self):
@@ -136,7 +124,7 @@ class Viewer(QtWidgets.QMainWindow):
         self.graphicsView.setRenderHint(QtGui.QPainter.Antialiasing)
         self.hbox = QtWidgets.QVBoxLayout()
         self.scene = Scene(self)
-        self.table = MyTableWidget(0,5)
+        self.table = MyTableWidget(0,len(Item.position))
         self.table.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
         self.photo = QtWidgets.QLabel()
         # self.table.setHorizontalHeaderItem(0,QtWidgets.QTableWidgetItem('#'))
@@ -178,6 +166,7 @@ class Viewer(QtWidgets.QMainWindow):
         self.listAct = QtWidgets.QAction("&Lister les items du plan ...", self, shortcut="Ctrl+L",
                                             triggered=self.listItems)
 
+        self.aboutAct = QtWidgets.QAction("&A propos...", self, triggered=self.about)
 
         self.removeItemAct = QtWidgets.QAction("&Remove Item",self, triggered=self.removeItem)
         self.sortItemNbrAct = QtWidgets.QAction("&Renuméroter",self, triggered=self.sortItemNbr)
@@ -190,10 +179,14 @@ class Viewer(QtWidgets.QMainWindow):
         self.fileMenu.addAction(self.saveAct)
         self.fileMenu.addAction(self.exportDwgAct)
 
+        self.aboutMenu = QtWidgets.QMenu("&A propos", self)
+        self.aboutMenu.addAction(self.aboutAct)
+
         self.editMenu = QtWidgets.QMenu("&Edit", self)
         self.editMenu.addAction(self.listAct)
 
         self.menuBar().addMenu(self.fileMenu)
+        self.menuBar().addMenu(self.aboutMenu)
 
         # Context Menu for tableWidget
         self.table.addAction(self.removeItemAct)
@@ -210,7 +203,11 @@ class Viewer(QtWidgets.QMainWindow):
         path = QtCore.QDir.currentPath()+r'output.png'
         txt = get_string(path)
         print(txt)
-        self.item = Item(self.defineItemNbr(), self.cropPixmap, self.scene.originCropPoint, txt,None)
+        self.item = Item(item_nbr=self.defineItemNbr(),
+                         cropPixmap=self.cropPixmap,
+                         origin_point=self.scene.originCropPoint,
+                         designation=txt,
+                         nominalValue=txt)
         if self.item.item_nbr ==1:
             self.image = self.pixmap
         self.items.append(self.item)
@@ -263,7 +260,7 @@ class Viewer(QtWidgets.QMainWindow):
 
         # Ajout sur le tableau
         self.table.insertRow(0)
-        imgWidget = ImgWidget(item.crop_pixmap)
+        imgWidget = ImgWidget(item.cropPixmap)
         nbrWidget = QtWidgets.QTableWidgetItem(str(item.item_nbr))
         desWidget = QtWidgets.QTableWidgetItem(item.designation)
         desWidget.setData(QtCore.Qt.UserRole,0)
@@ -273,7 +270,7 @@ class Viewer(QtWidgets.QMainWindow):
         # Mise à jour du graphique
         self.ballonItem(item)
         # Mise à jour de la capture
-        self.add_photo(item.crop_pixmap)
+        self.add_photo(item.cropPixmap)
         # self.update()
 
     def add_photo(self, photo):
@@ -318,7 +315,7 @@ class Viewer(QtWidgets.QMainWindow):
         nbr = self.table.item(row, 0).text()
         for i,item in enumerate(self.items):
             if str(item.item_nbr) == nbr:
-                self.photo.setPixmap(item.crop_pixmap)
+                self.photo.setPixmap(item.cropPixmap)
                 print(nbr, 'done')
                 break
 
@@ -400,7 +397,7 @@ class Viewer(QtWidgets.QMainWindow):
     def initSettings(self, items):
         self.pixmap = items[0].image
         self.table.setRowCount(0)
-        self.scene.addPixmap(self.pixmap)  # assign picture to the scene
+        self.scene.addPixmap(self.pixmap)       # assign picture to the scene
         self.graphicsView.setScene(self.scene)  # assign scene to a view
         self.graphicsView.show()  # show the scene
         for item in items:
@@ -442,6 +439,11 @@ class Viewer(QtWidgets.QMainWindow):
             xw.Range('A'+str(l+1)).value = item.item_nbr
             xw.Range('B'+str(l+1)).value = item.designation
 
+    def about(self):
+        txt = ('''
+        Créé par S.Page pour HPO
+        ''')
+        QtWidgets.QMessageBox.about(self,'A propos...',txt)
 
 if __name__ == '__main__':
     import sys
