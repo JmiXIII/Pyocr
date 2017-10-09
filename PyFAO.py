@@ -86,7 +86,11 @@ class MyTableWidget(QtWidgets.QTableWidget):
          key = event.key()
 
          if key == QtCore.Qt.Key_Return or key == QtCore.Qt.Key_Enter:
-             self.currentItem().text()
+             try:
+                 self.currentItem().text()
+             except:
+                 pass
+             #self.currentItem().text()
              self.returnPressed.emit()
          else:
              super(MyTableWidget, self).keyPressEvent(event)
@@ -260,13 +264,14 @@ class Viewer(QtWidgets.QMainWindow):
 
         # Ajout sur le tableau
         self.table.insertRow(0)
-        imgWidget = ImgWidget(item.cropPixmap)
         nbrWidget = QtWidgets.QTableWidgetItem(str(item.item_nbr))
         desWidget = QtWidgets.QTableWidgetItem(item.designation)
-        desWidget.setData(QtCore.Qt.UserRole,0)
-        # self.table.setCellWidget(0,4,imgWidget)
-        self.table.setItem(0,item.position.index('item_nbr'),nbrWidget)
-        self.table.setItem(0,item.position.index('designation'),desWidget)
+        # self.table.setItem(0,item.position.index('item_nbr'),nbrWidget)
+        # self.table.setItem(0,item.position.index('designation'),desWidget)
+        for attr in Item.position :
+            value = str(getattr(item,str(attr)))
+            widget = QtWidgets.QTableWidgetItem(value)
+            self.table.setItem(0,item.position.index(attr),widget)
         # Mise à jour du graphique
         self.ballonItem(item)
         # Mise à jour de la capture
@@ -284,17 +289,18 @@ class Viewer(QtWidgets.QMainWindow):
         self.refreshScene()
 
     def modifyItem(self):
-        before = self.table.currentItem().text()
+        try: before = self.table.currentItem().text()
+        except : before = ""
         row = self.table.currentRow()
         col = self.table.currentColumn()
         attribut = Item.position[col]
-        nbr = self.table.item(row,0).text()
-        print("avant :",before)
+        nbr = self.table.item(row, 0).text()
+        print("avant :", before)
         QtGui.QGuiApplication.processEvents()
         after = self.table.currentItem().text()
-        print('après :',after)
+        print('après :', after)
         item = self.searchItemAttribut(nbr)
-        setattr(item,attribut,after)
+        setattr(item, attribut, after)
         # self.graphicsView.scale(2,2)
         self.refreshScene()
 
@@ -378,7 +384,7 @@ class Viewer(QtWidgets.QMainWindow):
         settings = QtCore.QSettings(fileName, QtCore.QSettings.IniFormat)
         for index in range(settings.beginReadArray('items')):
             settings.setArrayIndex(index)
-            item = Item(None, None, None, None, None)
+            item = Item()
             for key in Item.position:
                 print(key)
                 setattr(item,str(key),settings.value(str(key)))
