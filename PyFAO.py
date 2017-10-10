@@ -13,13 +13,27 @@ def get_string(img_path):
 ###
 # https://stackoverflow.com/questions/35508711/how-to-enable-pan-and-zoom-in-a-qgraphicsview
 ###
+# TODO : Implement scrolling when double click in the table
+#         => retrieve originpoint, pass it to view.move
+#           => use connector from table class
+# TODO : implement better OCR and then populate Nom / Min / Max Value
+# TODO : implement panning in view
+# TODO : implement excel dimensionnal templating
+# TODO : Implement Feasibility
+# TODO : Implement better anti-alisaing
+
 
 class View(QtWidgets.QGraphicsView):
 
     mouseReleased = QtCore.pyqtSignal()
     def __init__(self, parent=None):
         super(View, self).__init__(parent)
-
+        # gl = QtWidgets.QOpenGLWidget()
+        # fmt = QtGui.QSurfaceFormat()
+        # fmt.setSamples(8)
+        # gl.setFormat(fmt)
+        # self.setViewport(gl)
+        self.setRenderHint(QtGui.QPainter.Antialiasing)
     #    self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
 
     def wheelEvent(self, event):
@@ -28,7 +42,11 @@ class View(QtWidgets.QGraphicsView):
     def zoom(self,factor):
         if factor < 0.0 :
             factor = -1.0 / factor
+        self.setRenderHint(QtGui.QPainter.HighQualityAntialiasing,
+                           QtGui.QPainter.SmoothPixmapTransform,
+                           )
         self.scale(factor,factor)
+
 
     def keyPressEvent(self, event):
         print('event ok')
@@ -125,7 +143,6 @@ class Viewer(QtWidgets.QMainWindow):
         # UI setup
         #self.setGeometry(200,200,800,600)
         self.graphicsView = View()
-        self.graphicsView.setRenderHint(QtGui.QPainter.Antialiasing)
         self.pRef = QtWidgets.QLabel("Ref Pièce :")
         self.pRefEdit = QtWidgets.QLineEdit()
         self.pName = QtWidgets.QLabel("Nom de la pièce :")
@@ -133,26 +150,26 @@ class Viewer(QtWidgets.QMainWindow):
         self.pRev = QtWidgets.QLabel("Revision")
         self.pRevEdit = QtWidgets.QLineEdit()
         self.hbox = QtWidgets.QVBoxLayout()
-        self.part = QtWidgets.QHBoxLayout()
-        self.part.addWidget(self.pRef)
-        self.part.addWidget(self.pRefEdit)
-        self.part.addWidget(self.pRev)
-        self.part.addWidget(self.pRevEdit)
-        self.part.addWidget(self.pName)
-        self.part.addWidget(self.pNameEdit)
+
+        #self.part = QtWidgets.QHBoxLayout()
+        self.form = QtWidgets.QGridLayout()
+        self.form.addWidget(self.pRef,0,0)
+        self.form.addWidget(self.pRefEdit,0,1)
+        self.form.addWidget(self.pName,0,2)
+        self.form.addWidget(self.pNameEdit,0,3)
+        self.form.addWidget(self.pRev,1,0)
+        self.form.addWidget(self.pRevEdit,1,1)
+
+
         self.scene = Scene(self)
         self.table = MyTableWidget(0,len(Item.position))
         self.table.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
         self.photo = QtWidgets.QLabel()
-        # self.table.setHorizontalHeaderItem(0,QtWidgets.QTableWidgetItem('#'))
         self.table.setHorizontalHeaderLabels(Item.position)
         self.splitter = QtWidgets.QSplitter()
         self.splitter.setOrientation(QtCore.Qt.Horizontal)
         self.splitter2 = QtWidgets.QSplitter()
         self.splitter2.setOrientation(QtCore.Qt.Vertical)
-        # self.hbox2 = QtWidgets.QHBoxLayout()
-        # self.hbox2.addLayout(self.part)
-        # self.hbox2.addWidget(self.table)
         self.splitter2.addWidget(self.table)
         self.splitter2.addWidget(self.photo)
 
@@ -165,12 +182,8 @@ class Viewer(QtWidgets.QMainWindow):
         self.table.cellClicked.connect(self.viewPhoto)
         self.scene.mouseReleased.connect(self.mReleasedAct)
 
-        # self.hbox.addWidget(self.graphicsView)
-        # self.hbox.addLayout(self.hbox2)
-        self.hbox.addLayout(self.part)
+        self.hbox.addLayout(self.form)
         self.hbox.addWidget(self.splitter)
-        # self.hbox.addWidget(self.pRef)
-        # self.hbox.addWidget(self.pRefEdit)
         self.widget = QtWidgets.QWidget()
         self.widget.setLayout(self.hbox)
         self.setCentralWidget(self.widget)
@@ -223,9 +236,6 @@ class Viewer(QtWidgets.QMainWindow):
         # Handle Table feeding
         self.cropPixmap = self.pixmap.copy(self.scene.currentQRect)
         self.cropPixmap = self.cropPixmap.scaledToHeight(50, QtCore.Qt.SmoothTransformation)
-        # size = self.cropPixmap.size()
-        # self.cropPixmap = self.cropPixmap.scaled(300, QtCore.Qt.KeepAspectRatio,
-        #                                          transformMode=QtCore.Qt.SmoothTransformation)
         self.cropPixmap.save('output.png')
         path = QtCore.QDir.currentPath()+r'output.png'
         txt = get_string(path)
@@ -235,8 +245,8 @@ class Viewer(QtWidgets.QMainWindow):
                          origin_point=self.scene.originCropPoint,
                          designation=txt,
                          nominalValue=txt)
-        if self.item.item_nbr ==1:
-            self.image = self.pixmap
+        if self.item.item_nbr == 1:
+            self.item.image = self.pixmap
         self.items.append(self.item)
         self.add_item(self.item)
 
@@ -352,21 +362,17 @@ class Viewer(QtWidgets.QMainWindow):
         fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File",
                                                             QtCore.QDir.currentPath())
         if fileName:
-            self.image2 = \
-                QtGui.QImage(fileName)
+            self.image2 = QtGui.QImage(fileName)
             if self.image2.isNull():
                 QtWidgets.QMessageBox.information(self, "Image Viewer",
                                                   "Cannot load %s." % fileName)
                 return
         self.displayPicture(fileName)
 
-            # fits the picture within the scene -
-            # self.rect = self.graphicsView.sceneRect()
-            # self.graphicsView.fitInView(self.rect, QtCore.Qt.KeepAspectRatio)
 
     def displayPicture(self, fileName):
         self.image = QtGui.QImage(fileName)
-        self.image = self.image.scaledToWidth(4500, QtCore.Qt.SmoothTransformation)
+        self.image = self.image.scaledToWidth(3840, QtCore.Qt.SmoothTransformation)
         self.scene.clear()                              # clear graphics scene
         self.pixmap = QtGui.QPixmap.fromImage(self.image)
         # important for centering the picture within the scene
